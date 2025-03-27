@@ -2,7 +2,7 @@ import pg from "pg";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import process from "process";
+import { DB_CONFIG, ERROR_MESSAGES } from "./constants.js";
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -10,16 +10,17 @@ dotenv.config({
   path: path.join(__dirname, ".env"),
 });
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.HOST,
-  database: process.env.DATABASE,
-  password: process.env.PASSWORD,
-  port: process.env.PORT,
-});
+const pool = new Pool(DB_CONFIG);
 
+function validateTableName(table) {
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table)) {
+    throw new Error(ERROR_MESSAGES.INVALID_TABLE);
+  }
+}
+// TODO: FTH.RL - REMOVE CONSOLE.ERROR
 const crud = {
   async create(table, data) {
+    validateTableName(table);
     const keys = Object.keys(data).join(", ");
     const values = Object.values(data);
     const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
@@ -38,6 +39,7 @@ const crud = {
   },
 
   async list(table, filter = {}) {
+    validateTableName(table);
     const keys = Object.keys(filter);
     const values = Object.values(filter);
     const whereClause = keys
@@ -58,6 +60,7 @@ const crud = {
   },
 
   async read(table, filter) {
+    validateTableName(table);
     const keys = Object.keys(filter);
     const values = Object.values(filter);
     const whereClause = keys
@@ -78,8 +81,9 @@ const crud = {
   },
 
   async update(table, filter, data) {
+    validateTableName(table);
     if (!table || !filter || !data) {
-      throw new Error("Invalid parameters: table, filter, and data are required.");
+      throw new Error(ERROR_MESSAGES.MISSING_PARAMS);
     }
 
     const filterKeys = Object.keys(filter);
@@ -99,10 +103,27 @@ const crud = {
     const client = await pool.connect();
     try {
       const result = await client.query(query, [...filterValues, ...dataValues]);
-      console.info(`[FTH-RL][Line ${new Error().stack.split('\n')[1].split(':')[1]}]`, 'result.rows[0]:', result.rows[0]);
       return result.rows[0];
     } catch (error) {
       console.error("Error in update:", error.message);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  async searchLike(table, field, value) {
+    validateTableName(table);
+
+    const query = `SELECT * FROM ${table} WHERE ${field} ILIKE $1`;
+    const searchPattern = `%${value}%`;  // % is a wildcard in SQL LIKE
+
+    const client = await pool.connect();
+    try {
+      const result = await client.query(query, [searchPattern]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error in searchLike:", error);
       throw error;
     } finally {
       client.release();

@@ -1,5 +1,5 @@
 
-import crud from "./crud.js";
+import crud from "./infra/crud.js";
 
 (async () => {
   try {
@@ -20,6 +20,9 @@ import crud from "./crud.js";
 
     const usersListByName = await crud.list("Account", { name: "Alice" });
     console.log("Users by name:", usersListByName);
+
+    const usersWithAliceInName = await crud.searchLike("Account", "name", "Alice");
+    console.log("Users with 'Alice' in name:", usersWithAliceInName);
   } catch (error) {
     console.error(error);
   }
