@@ -1,7 +1,13 @@
-
+import { router, PORT } from "./api.js";
 import crud from "./infra/crud.js";
 
-(async () => {
+router.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+
+  testDatabase();
+});
+
+async function testDatabase() {
   try {
     const user = await crud.create("Account", { name: "Alice", email: "alice@gmail.com" });
     console.log("User created:", user);
@@ -26,4 +32,4 @@ import crud from "./infra/crud.js";
   } catch (error) {
     console.error(error);
   }
-})();
+}

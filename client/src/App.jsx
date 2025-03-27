@@ -1,21 +1,16 @@
-import { useState } from "react";
 import "./App.css";
-import { Button } from "@mui/material";
+import { Box, Typography } from "@mui/material";
+import AccountsManager from "./components/AccountsManager";
 
 function App() {
-  const [count, setCount] = useState(0);
-
   return (
-    <>
-      <Button
-        variant="contained"
-        onClick={() => setCount((count) => count + 1)}
-        color="primary"
-      >
-        Click me
-      </Button>
-      <p>{count}</p>
-    </>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Água Doce
+      </Typography>
+
+      <AccountsManager />
+    </Box>
   );
 }
 

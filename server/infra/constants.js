@@ -4,11 +4,8 @@ import { fileURLToPath } from "url";
 import process from "process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({
-  path: path.join(__dirname, "../.env"),
-});
+dotenv.config({ path: path.join(__dirname, "../.env"), });
 
-// Debug (remove after confirming it works)
 console.info("[FTH-RL] DB_USER:", process.env.DB_USER);
 
 export const DB_CONFIG = {
@@ -16,7 +13,12 @@ export const DB_CONFIG = {
   host: process.env.HOST,
   database: process.env.DATABASE,
   password: process.env.PASSWORD,
-  port: parseInt(process.env.PORT, 10) || 5432, // Make sure port is a number
+  port: parseInt(process.env.DB_PORT)
+};
+
+export const SERVER_CONFIG = {
+  PORT: process.env.PORT,
+  CORS_ORIGIN: process.env.CORS_ORIGIN,
 };
 
 export const TABLES = {
