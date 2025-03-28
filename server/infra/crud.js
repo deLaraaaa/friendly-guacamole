@@ -2,25 +2,19 @@ import pg from "pg";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import { DB_CONFIG, ERROR_MESSAGES } from "./constants.js";
+import CONST from "./constants.js";
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({
-  path: path.join(__dirname, ".env"),
-});
+dotenv.config({ path: path.join(__dirname, ".env"), });
 
-const pool = new Pool(DB_CONFIG);
+const pool = new Pool(CONST.DB_CONFIG);
 
-function validateTableName(table) {
-  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table)) {
-    throw new Error(ERROR_MESSAGES.INVALID_TABLE);
-  }
-}
 // TODO: FTH.RL - REMOVE CONSOLE.ERROR
 const crud = {
-  async create(table, data) {
-    validateTableName(table);
+  async create(kind, data) {
+    const table = `"${kind}"`;
+
     const keys = Object.keys(data).join(", ");
     const values = Object.values(data);
     const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
@@ -38,15 +32,24 @@ const crud = {
     }
   },
 
-  async list(table, filter = {}) {
-    validateTableName(table);
-    const keys = Object.keys(filter);
-    const values = Object.values(filter);
+  async list(kind, filter = {}, limit = 100) {
+    const table = `"${kind}"`;
+
+    const keys = Object.keys(filter).filter(k => k !== "limit");
+    const values = keys.map(k => filter[k]);
     const whereClause = keys
       .map((key, i) => `${key} = $${i + 1}`)
       .join(" AND ");
 
-    const query = `SELECT * FROM ${table} ${keys.length ? `WHERE ${whereClause}` : ""}`;
+    const limitValue = limit;
+
+    let query = `SELECT * FROM ${table} ${keys.length && `WHERE ${whereClause}`}`;
+
+    if (limitValue) {
+      query += ` LIMIT $${values.length + 1}`;
+      values.push(parseInt(limitValue, 10));
+    }
+
     const client = await pool.connect();
     try {
       const result = await client.query(query, values);
@@ -59,17 +62,18 @@ const crud = {
     }
   },
 
-  async read(table, filter) {
-    validateTableName(table);
-    const keys = Object.keys(filter);
-    const values = Object.values(filter);
-    const whereClause = keys
-      .map((key, i) => `${key} = $${i + 1}`)
-      .join(" AND ");
-
-    const query = `SELECT * FROM ${table} WHERE ${whereClause} LIMIT 1`;
+  async read(kind, filter) {
     const client = await pool.connect();
     try {
+      const table = `"${kind}"`;
+
+      const keys = Object.keys(filter);
+      const values = Object.values(filter);
+      const whereClause = keys
+        .map((key, i) => `${key} = $${i + 1}`)
+        .join(" AND ");
+      const query = `SELECT * FROM ${table} WHERE ${whereClause} LIMIT 1`;
+
       const result = await client.query(query, values);
       return result.rows[0];
     } catch (error) {
@@ -80,11 +84,11 @@ const crud = {
     }
   },
 
-  async update(table, filter, data) {
-    validateTableName(table);
-    if (!table || !filter || !data) {
-      throw new Error(ERROR_MESSAGES.MISSING_PARAMS);
+  async update(kind, filter, data) {
+    if (!kind || !filter || !data) {
+      throw new Error(CONST.ERROR_MESSAGES.MISSING_PARAMS);
     }
+    const table = `"${kind}"`;
 
     const filterKeys = Object.keys(filter);
     const filterValues = Object.values(filter);
@@ -112,11 +116,10 @@ const crud = {
     }
   },
 
-  async searchLike(table, field, value) {
-    validateTableName(table);
-
+  async searchLike(kind, field, value) {
+    const table = `"${kind}"`;
     const query = `SELECT * FROM ${table} WHERE ${field} ILIKE $1`;
-    const searchPattern = `%${value}%`;  // % is a wildcard in SQL LIKE
+    const searchPattern = `%${value}%`;
 
     const client = await pool.connect();
     try {
