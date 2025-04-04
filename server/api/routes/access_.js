@@ -1,22 +1,23 @@
 import express from "express";
 import cors from "cors";
-import crud from "../infra/crud.js";
+import crud from "../../infra/crud.js";
 import dotenv from "dotenv";
 import process from "process";
 import rateLimit from "express-rate-limit";
-import api from "./access.js";
-import CONST from "../infra/constants.js";
+import api from "../access.js";
+import CONST from "../../infra/constants.js";
 
 dotenv.config();
 
-const router = express();
-const PORT = process.env.PORT || 3001;
+// eslint-disable-next-line new-cap
+const router = express.Router();
 
 router.use(cors({ origin: process.env.CORS_ORIGIN }));
 router.use(express.json());
 
 router.get("/api/accounts", async (req, res) => {
   try {
+    console.info(`[FTH-RL] (__filename:${new Error().stack.split('\n')[1].trim().split(':').reverse()[1]})`, req.user);
     const accounts = await crud.list(CONST.TABLES.ACCOUNT.KIND, {});
     res.json(accounts);
   } catch (error) {
@@ -54,6 +55,8 @@ const authLimiter = rateLimit({
 router.post("/api/login", authLimiter, async (req, res) => {
   try {
     const result = await api.login(req.body);
+    req.user = result.user;
+    console.info(`[FTH-RL] (__filename:${new Error().stack.split('\n')[1].trim().split(':').reverse()[1]})`, req.user);
     res.status(200).json(result);
   } catch (error) {
     console.error("Error during login:", error);
@@ -61,4 +64,4 @@ router.post("/api/login", authLimiter, async (req, res) => {
   }
 });
 
-export { router, PORT };
+export default router;

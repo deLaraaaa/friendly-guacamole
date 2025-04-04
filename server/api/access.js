@@ -127,5 +127,69 @@ export default {
 
     const { password: _, ...userWithoutPassword } = user;
     return { user: userWithoutPassword, token };
+  },
+
+  async addInventoryItem(data) {
+    const {
+      name, category, quantity, expirationDate, supplier, storageLocation, restaurantId
+    } = data;
+
+    if (!name || !category || quantity == null || !restaurantId) {
+      throw { status: 400, message: "Name, category, quantity, and restaurantId are required" };
+    }
+
+    return crud.create(CONST.TABLES.INVENTORY_ITEMS.KIND, {
+      name, category, quantity, expirationDate, supplier, storageLocation, restaurantId
+    });
+  },
+
+  async listInventoryItems(filter, limit) {
+    return await crud.list(CONST.TABLES.INVENTORY_ITEMS.KIND, filter, limit);
+  },
+
+  async updateInventoryItem(filter, data) {
+    return await crud.update(CONST.TABLES.INVENTORY_ITEMS.KIND, filter, data);
+  },
+
+  async addStockEntry(data) {
+    const {
+      itemId, quantity, userId, invoiceUrl, restaurantId
+    } = data;
+
+    if (!itemId || !quantity || !userId || !restaurantId) {
+      throw { status: 400, message: "ItemId, quantity, userId, and restaurantId are required" };
+    }
+
+    return await crud.create(CONST.TABLES.STOCK_ENTRIES.KIND, {
+      itemId, quantity, userId, invoiceUrl, restaurantId
+    });
+  },
+
+  async addStockExit(data) {
+    const {
+      itemId, quantity, userId, invoiceUrl, restaurantId
+    } = data;
+
+    if (!itemId || !quantity || !userId || !restaurantId) {
+      throw { status: 400, message: "ItemId, quantity, userId, and restaurantId are required" };
+    }
+
+    return await crud.create(CONST.TABLES.STOCK_EXIT.KIND, {
+      itemId, quantity, userId, invoiceUrl, restaurantId
+    });
+  },
+
+  async generateReport(data) {
+    const {
+      reportTitle, description, reportType, createdBy, restaurantId
+    } = data;
+
+    if (!reportTitle || !description || !reportType || !createdBy || !restaurantId) {
+      throw { status: 400, message: "ReportTitle, description, reportType, createdBy, and restaurantId are required" };
+    }
+
+    return await crud.create(CONST.TABLES.GENERAL_REPORTS.KIND, {
+      reportTitle, description, reportType, createdBy, restaurantId
+    });
   }
 };

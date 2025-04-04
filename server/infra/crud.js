@@ -37,17 +37,19 @@ const crud = {
 
     const keys = Object.keys(filter).filter(k => k !== "limit");
     const values = keys.map(k => filter[k]);
-    const whereClause = keys
-      .map((key, i) => `${key} = $${i + 1}`)
-      .join(" AND ");
 
-    const limitValue = limit;
+    let query = `SELECT * FROM ${table}`;
+    if (keys.length > 0) {
+      const whereClause = keys
+        .map((key, i) => `${key} = $${i + 1}`)
+        .join(" AND ");
+      query += ` WHERE ${whereClause}`;
+    }
 
-    let query = `SELECT * FROM ${table} ${keys.length && `WHERE ${whereClause}`}`;
-
-    if (limitValue) {
-      query += ` LIMIT $${values.length + 1}`;
-      values.push(parseInt(limitValue, 10));
+    if (limit) {
+      const paramPosition = values.length + 1;
+      query += ` LIMIT $${paramPosition}`;
+      values.push(parseInt(limit, 10));
     }
 
     const client = await pool.connect();
@@ -55,7 +57,7 @@ const crud = {
       const result = await client.query(query, values);
       return result.rows;
     } catch (error) {
-      console.error("Error in list:", error);
+      console.error("Error in list:", error, "Query:", query, "Values:", values);
       throw error;
     } finally {
       client.release();

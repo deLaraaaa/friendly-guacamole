@@ -35,8 +35,8 @@ function AccountList({ accounts }) {
             <Box key={account.id || index}>
               <ListItem>
                 <ListItemText
-                  primary={account.name}
-                  secondary={account.email}
+                  primary={`${account.username}@${account.namespace}`}
+                  secondary={account.role}
                 />
               </ListItem>
               {index < accounts.length - 1 && <Divider />}
