@@ -17,7 +17,6 @@ router.use(express.json());
 
 router.get("/api/accounts", async (req, res) => {
   try {
-    console.info(`[FTH-RL] (__filename:${new Error().stack.split('\n')[1].trim().split(':').reverse()[1]})`, req.user);
     const accounts = await crud.list(CONST.TABLES.ACCOUNT.KIND, {});
     res.json(accounts);
   } catch (error) {
@@ -28,7 +27,7 @@ router.get("/api/accounts", async (req, res) => {
 
 router.post("/api/restaurant_register", async (req, res) => {
   try {
-    const restaurant = await api.restaurantRegister(req.body);
+    const restaurant = await api.restaurantRegister(req.user, req.body);
     res.status(201).json(restaurant);
   } catch (error) {
     console.error("Error registering restaurant:", error);
@@ -38,7 +37,7 @@ router.post("/api/restaurant_register", async (req, res) => {
 
 router.post("/api/register", async (req, res) => {
   try {
-    const user = await api.register(req.body);
+    const user = await api.register(req.user, req.body);
     res.status(201).json(user);
   } catch (error) {
     console.error("Error registering user:", error);
@@ -56,11 +55,62 @@ router.post("/api/login", authLimiter, async (req, res) => {
   try {
     const result = await api.login(req.body);
     req.user = result.user;
-    console.info(`[FTH-RL] (__filename:${new Error().stack.split('\n')[1].trim().split(':').reverse()[1]})`, req.user);
     res.status(200).json(result);
   } catch (error) {
     console.error("Error during login:", error);
     res.status(error.status || 500).json({ error: error.message || "Login failed" });
+  }
+});
+
+router.post("/api/send_reset_code", async (req, res) => {
+  try {
+    const { email } = req.body;
+    const result = await api.sendResetCode(email);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error sending reset token:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to send reset token" });
+  }
+});
+
+router.post("/api/reset_password", async (req, res) => {
+  try {
+    const { email, resetToken, newPassword } = req.body;
+    const result = await api.resetPassword(email, resetToken, newPassword);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error resetting password:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to reset password" });
+  }
+});
+
+router.post("/api/add_item", async (req, res) => {
+  try {
+    const result = await api.addInventoryItem(req.user, req.body);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error during login:", error);
+    res.status(error.status || 500).json({ error: error.message });
+  }
+});
+
+router.post("/api/stock_entry", async (req, res) => {
+  try {
+    const result = await api.addStockEntry(req.user, req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    console.error("Error adding stock entry:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to add stock entry" });
+  }
+});
+
+router.post("/api/stock_exit", async (req, res) => {
+  try {
+    const result = await api.addStockExit(req.user, req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    console.error("Error adding stock exit:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to add stock exit" });
   }
 });
 

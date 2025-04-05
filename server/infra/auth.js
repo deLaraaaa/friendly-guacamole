@@ -29,7 +29,7 @@ export const authenticate = (req, res, next) => {
 };
 
 router.use((req, res, next) => {
-  const publicRoutes = ["/api/login", "/api/register", "/api/restaurant_register"];
+  const publicRoutes = ["/api/login", "/api/register", "/api/restaurant_register", "/api/send_reset_code", "/api/reset_password"];
   if (publicRoutes.includes(req.path)) {
     return next();
   }
@@ -37,7 +37,7 @@ router.use((req, res, next) => {
   authenticate(req, res, next);
 });
 
-const routesDir = path.join(__dirname, "routes");
+const routesDir = path.join(__dirname, "../api/routes");
 (async () => {
   for (const file of fs.readdirSync(routesDir)) {
     if (file.endsWith(".js")) {
