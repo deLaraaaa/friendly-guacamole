@@ -13,7 +13,7 @@ export default {
     const restaurant = await crud.read(user, CONST.TABLES.RESTAURANT.KIND, { namespace });
 
     if (!restaurant) {
-      throw { status: 404, message: "Restaurant with this namespace does not exist" };
+      throw { status: 404, ...CONST.ERRORS.ERR_2005 };
     }
   },
 
@@ -27,7 +27,7 @@ export default {
 
     const existingRestaurant = await crud.read(user, CONST.TABLES.RESTAURANT.KIND, { namespace });
     if (existingRestaurant) {
-      throw { status: 409, message: "Restaurant with this namespace already exists" };
+      throw { status: 409, ...CONST.ERRORS.ERR_2005 };
     }
 
     const newRestaurant = await crud.create(user, CONST.TABLES.RESTAURANT.KIND, {
@@ -50,16 +50,16 @@ export default {
     role = role.toUpperCase();
 
     if (!username || !password || !namespace || !email || !role) {
-      throw { status: 400, message: "Username, password, namespace, email, and role are required" };
+      throw { status: 400, ...CONST.ERRORS.ERR_2000 };
     }
 
     if (!validator.isEmail(email)) {
-      throw { status: 400, message: "Invalid email format" };
+      throw { status: 400, ...CONST.ERRORS.ERR_2001 };
     }
 
-    const validRoles = ["ADMIN", "RECEPCIONIST", "COOK", "WAITER"];
+    const validRoles = Object.values(CONST.TABLES.ACCOUNT.ROLE);
     if (!validRoles.includes(role)) {
-      throw { status: 400, message: `Role must be one of: ${validRoles.join(", ")}` };
+      throw { status: 400, ...CONST.ERRORS.ERR_2004 };
     }
 
     const restaurant = await this.getRestaurantByNamespace(user, namespace);
@@ -67,12 +67,12 @@ export default {
 
     const existingUserByUsername = await crud.read(user, CONST.TABLES.ACCOUNT.KIND, { username, namespace });
     if (existingUserByUsername) {
-      throw { status: 409, message: "User already exists with this username and namespace" };
+      throw { status: 409, ...CONST.ERRORS.ERR_2006 };
     }
 
     const existingUserByEmail = await crud.read(user, CONST.TABLES.ACCOUNT.KIND, { email });
     if (existingUserByEmail) {
-      throw { status: 409, message: "User already exists with this email" };
+      throw { status: 409, ...CONST.ERRORS.ERR_2007 };
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -95,7 +95,7 @@ export default {
     const { login, password } = data;
 
     if (!login || !password) {
-      throw { status: 400, message: "Login and password are required" };
+      throw { status: 400, ...CONST.ERRORS.ERR_2000 };
     }
 
     const loginParts = login.split("@");
@@ -134,12 +134,12 @@ export default {
 
   async sendResetCode(user, email) {
     if (!email) {
-      throw { status: 400, message: "Email is required" };
+      throw { status: 400, ...CONST.ERRORS.ERR_2000 };
     }
 
     email = validator.normalizeEmail(email.trim());
     if (!validator.isEmail(email)) {
-      throw { status: 400, message: "Invalid email format" };
+      throw { status: 400, ...CONST.ERRORS.ERR_2001 };
     }
 
     const account = await crud.read(user, CONST.TABLES.ACCOUNT.KIND, { email });
@@ -175,17 +175,17 @@ export default {
   async resetPassword(user, email, resetToken, newPassword) {
     console.info(`[FTH-RL] (__filename:${new Error().stack.split("\n")[1].trim().split(":").reverse()[1]})`, email, resetToken, newPassword);
     if (!email || !resetToken || !newPassword) {
-      throw { status: 400, message: "Email, reset token, and new password are required" };
+      throw { status: 400, ...CONST.ERRORS.ERR_2000 };
     }
 
     email = validator.normalizeEmail(email.trim());
     if (!validator.isEmail(email)) {
-      throw { status: 400, message: "Invalid email format" };
+      throw { status: 400, ...CONST.ERRORS.ERR_2001 };
     }
 
     const tokenData = resetTokens.get(email);
     if (!tokenData || tokenData.token !== resetToken || Date.now() > tokenData.expiresAt) {
-      throw { status: 400, message: "Invalid or expired reset token" };
+      throw { status: 400, ...CONST.ERRORS.ERR_2002 };
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -193,6 +193,23 @@ export default {
 
     resetTokens.delete(email);
     return { message: "Password reset successfully" };
+  },
+
+  async changeUserRole(user, data) {
+    if (user.role !== CONST.TABLES.ACCOUNT.ROLE.ADMIN) throw { status: 404, ...CONST.ERRORS.ERR_1000 };
+    const { userId, newRole } = data;
+    const restaurantId = user.restaurantId;
+
+    if (!userId || !newRole) {
+      throw { status: 400, message: "UserId and newRole are required" };
+    }
+
+    const validRoles = Object.values(CONST.TABLES.ACCOUNT.ROLE);
+    if (!validRoles.includes(newRole)) {
+      throw { status: 400, ...CONST.ERRORS.ERR_2004 };
+    }
+
+    return await crud.update(user, CONST.TABLES.ACCOUNT.KIND, { id: userId, restaurantId }, { role: newRole });
   },
 
   async addInventoryItem(user, data) {
@@ -203,9 +220,8 @@ export default {
 
     console.info(`[FTH-RL] (__filename:${new Error().stack.split("\n")[1].trim().split(":").reverse()[1]})`, user);
 
-    if (user.role !== CONST.TABLES.ACCOUNT.ROLE.ADMIN) {
-      throw { status: 403, message: "Only admins can add inventory items" };
-    }
+    if (user.role !== CONST.TABLES.ACCOUNT.ROLE.ADMIN) throw { status: 404, ...CONST.ERRORS.ERR_1001 };
+
 
     if (!name || !category || !quantity) {
       throw { status: 400, message: "Name, category and quantity are required" };
@@ -226,13 +242,11 @@ export default {
     const restaurantId = user.restaurantId;
 
     if (!itemId || !quantity || !userId || !restaurantId) {
-      throw { status: 400, message: "ItemId, quantity, userId, and restaurantId are required" };
+      throw { status: 400, ...CONST.ERRORS.ERR_2000 };
     }
 
     const inventoryItem = await crud.read(user, CONST.TABLES.INVENTORY_ITEMS.KIND, { id: itemId, restaurantId });
-    if (!inventoryItem) {
-      throw { status: 404, message: "Inventory item not found" };
-    }
+    if (!inventoryItem) throw { status: 404, ...CONST.ERRORS.ERR_2008 };
 
     const updatedQuantity = inventoryItem.quantity + quantity;
 
@@ -251,17 +265,17 @@ export default {
     const restaurantId = user.restaurantId;
 
     if (!itemId || !quantity || !restaurantId || !destination || !exitType || !exitDate) {
-      throw { status: 400, message: "ItemId, quantity, userId, restaurantId, destination, exitType and exitDate are required" };
+      throw { status: 400, ...CONST.ERRORS.ERR_2000 };
     }
 
     const inventoryItem = await crud.read(user, CONST.TABLES.INVENTORY_ITEMS.KIND, { id: itemId, restaurantId });
     if (!inventoryItem) {
-      throw { status: 404, message: "Inventory item not found" };
+      throw { status: 404, ...CONST.ERRORS.ERR_2008 };
     }
 
     const updatedQuantity = inventoryItem.quantity - quantity;
     if (updatedQuantity < 0) {
-      throw { status: 400, message: "Insufficient stock for this operation" };
+      throw { status: 400, ...CONST.ERRORS.ERR_2003 };
     };
 
     await crud.update(user, CONST.TABLES.INVENTORY_ITEMS.KIND, { id: itemId }, { quantity: updatedQuantity });
@@ -279,7 +293,7 @@ export default {
     const restaurantId = user.restaurantId;
 
     if (!reportTitle || !description || !reportType || !createdBy || !restaurantId) {
-      throw { status: 400, message: "ReportTitle, description, reportType, createdBy, and restaurantId are required" };
+      throw { status: 400, ...CONST.ERRORS.ERR_2000 };
     }
 
     return await crud.create(user, CONST.TABLES.GENERAL_REPORTS.KIND, {

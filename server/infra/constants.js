@@ -102,12 +102,18 @@ const CONST = {
     },
   },
 
-  ERROR_MESSAGES: {
-    INVALID_TABLE: "Invalid table name",
-    MISSING_PARAMS: "Invalid parameters: table, filter, and data are required.",
-    DB_CONNECTION: "Database connection error",
-    MISSING_USER: "User is required",
-    INVALID_KIND: "Invalid table name provided.",
+  ERRORS: {
+    ERR_1000: { Code: "1000", Message: "Only admins can change User Roles" },
+    ERR_1001: { Code: "1001", Message: "Only admins can add inventory items" },
+    ERR_2000: { Code: "2000", Message: "Missing required fields" },
+    ERR_2001: { Code: "2001", Message: "Invalid email format" },
+    ERR_2002: { Code: "2002", Message: "Invalid or expired reset token" },
+    ERR_2003: { Code: "2003", Message: "Insufficient stock for this operation" },
+    ERR_2004: { Code: "2004", Message: "Invalid role specified" },
+    ERR_2005: { Code: "2005", Message: "Restaurant with this namespace already exists" },
+    ERR_2006: { Code: "2006", Message: "User already exists with this username and namespace" },
+    ERR_2007: { Code: "2007", Message: "User already exists with this email" },
+    ERR_2008: { Code: "2008", Message: "Inventory item not found" },
   },
 };
 
