@@ -75,7 +75,9 @@ router.post("/api/send_reset_code", async (req, res) => {
 
 router.post("/api/reset_password", async (req, res) => {
   try {
-    const { email, resetToken, newPassword } = req.body;
+    const {
+      email, resetToken, newPassword
+    } = req.body;
     const result = await api.resetPassword(email, resetToken, newPassword);
     res.status(200).json(result);
   } catch (error) {

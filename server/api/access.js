@@ -222,7 +222,6 @@ export default {
 
     if (user.role !== CONST.TABLES.ACCOUNT.ROLE.ADMIN) throw { status: 404, ...CONST.ERRORS.ERR_1001 };
 
-
     if (!name || !category || !quantity) {
       throw { status: 400, message: "Name, category and quantity are required" };
     }
