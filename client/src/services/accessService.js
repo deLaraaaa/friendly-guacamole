@@ -24,9 +24,11 @@ export async function register(userData) {
  * @param {string} password - The user's password.
  * @returns {Promise<Object>} - The user data and token.
  */
-export async function login(login, password) {
+export async function login(login, password, rememberMe) {
   const endpoint = "/login";
-  const body = { login, password };
+  const body = {
+    login, password, rememberMe
+  };
   return await apiRequest(endpoint, {
     method: "POST",
     body: JSON.stringify(body),
@@ -78,4 +80,9 @@ export async function changeUserRole(userId, newRole) {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export function getCurrentUser() {
+  const endpoint = "/validate_token";
+  return apiRequest(endpoint, { method: "GET" });
 }

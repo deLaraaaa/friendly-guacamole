@@ -6,6 +6,7 @@ import process from "process";
 import rateLimit from "express-rate-limit";
 import api from "../access.js";
 import CONST from "../../infra/constants.js";
+import { authenticate } from "../../infra/auth.js";
 
 dotenv.config();
 
@@ -46,7 +47,7 @@ router.post("/api/register", async (req, res) => {
 });
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000, // 15 minutos
   max: 5,
   message: { error: "Too many login attempts, please try again later" }
 });
@@ -75,9 +76,7 @@ router.post("/api/send_reset_code", async (req, res) => {
 
 router.post("/api/reset_password", async (req, res) => {
   try {
-    const {
-      email, resetToken, newPassword
-    } = req.body;
+    const { email, resetToken, newPassword } = req.body;
     const result = await api.resetPassword(email, resetToken, newPassword);
     res.status(200).json(result);
   } catch (error) {
@@ -91,12 +90,28 @@ router.post("/api/add_item", async (req, res) => {
     const result = await api.addInventoryItem(req.user, req.body);
     res.status(200).json(result);
   } catch (error) {
-    console.error("Error during login:", error);
-    res.status(error.status || 500).json({ error: error.message });
+    console.error("Error adding inventory item:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-router.post("/api/stock_entry", async (req, res) => {
+router.get("/api/inventory_items", authenticate, async (req, res) => {
+  try {
+    const filters = req.query;
+    const items = await crud.list(req.user, CONST.TABLES.INVENTORY_ITEMS.KIND, {
+      ...filters,
+      restaurantId: req.user.restaurantId
+    });
+    res.status(200).json(items);
+  } catch (error) {
+    console.error("Error listing inventory items:", error);
+    res.status(error.status || 500).json({
+      error: error.message || "Failed to list inventory items"
+    });
+  }
+});
+
+router.post("/api/stock_entry", authenticate, async (req, res) => {
   try {
     const result = await api.addStockEntry(req.user, req.body);
     res.status(201).json(result);
@@ -106,13 +121,49 @@ router.post("/api/stock_entry", async (req, res) => {
   }
 });
 
-router.post("/api/stock_exit", async (req, res) => {
+router.get("/api/list_stock_entries", authenticate, async (req, res) => {
+  try {
+    const filters = req.query;
+    const entries = await api.listStockEntries(req.user, filters);
+    res.status(200).json(entries);
+  } catch (error) {
+    console.error("Error listing stock entries:", error);
+    res.status(error.status || 500).json({
+      error: error.message || "Failed to list stock entries"
+    });
+  }
+});
+
+router.post("/api/stock_exits", authenticate, async (req, res) => {
   try {
     const result = await api.addStockExit(req.user, req.body);
     res.status(201).json(result);
   } catch (error) {
     console.error("Error adding stock exit:", error);
     res.status(error.status || 500).json({ error: error.message || "Failed to add stock exit" });
+  }
+});
+
+router.get("/api/list_stock_exits", authenticate, async (req, res) => {
+  try {
+    const filters = req.query;
+    const exits = await api.listStockExits(req.user, filters);
+    res.status(200).json(exits);
+  } catch (error) {
+    console.error("Error listing stock exits:", error);
+    res.status(error.status || 500).json({
+      error: error.message || "Failed to list stock exits"
+    });
+  }
+});
+
+router.get("/api/validate_token", authenticate, (req, res) => {
+  try {
+    const { id, username, namespace, restaurantId, role } = req.user;
+    res.json({ id, username, namespace, restaurantId, role });
+  } catch (error) {
+    console.error("Error in /api/validate_token:", error);
+    res.status(500).json({ error: "Failed to fetch user information" });
   }
 });
 

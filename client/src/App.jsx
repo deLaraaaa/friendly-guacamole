@@ -1,16 +1,31 @@
-import "./App.css";
-import { Box, Typography } from "@mui/material";
-import AccountsManager from "./components/AccountsManager";
+import { ThemeProvider } from "@mui/material/styles";
+import theme from "./theme";
+import { Routes, Route, Navigate } from "react-router-dom"; // Adicione o Navigate aqui
+import MainLayout from "./pages/MainLayout";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Inventory from "./pages/Inventory";
+
+const token =
+  localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
 
 function App() {
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Água Doce
-      </Typography>
+    <ThemeProvider theme={theme}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
 
-      <AccountsManager />
-    </Box>
+        <Route
+          element={token ? <MainLayout /> : <Navigate to="/login" replace />}
+        >
+          <Route path="/" element={<Navigate to="/inventory" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/inventory" element={<Inventory />} />
+          {/* <Route path="/relatorio" element={<Relatorio />} />
+          <Route path="/configuracoes" element={<Configuracoes />} /> */}
+        </Route>
+      </Routes>
+    </ThemeProvider>
   );
 }
 

@@ -92,47 +92,52 @@ export default {
   },
 
   async login(data) {
-    const { login, password } = data;
+    try {
+      const {
+        login, password, rememberMe
+      } = data;
 
-    if (!login || !password) {
-      throw { status: 400, ...CONST.ERRORS.ERR_2000 };
+      if (!login || !password) {
+        throw { status: 400, ...CONST.ERRORS.ERR_2000 };
+      }
+
+      const loginParts = login.split("@");
+      if (loginParts.length !== 2) {
+        throw { status: 400, message: "Invalid login format. Use username@namespace" };
+      }
+
+      const [username, namespace] = loginParts;
+      const account = await crud.readLogin(CONST.TABLES.ACCOUNT.KIND, { username, namespace });
+      if (!account) {
+        throw { status: 401, message: "Invalid credentials" };
+      }
+
+      const passwordMatch = await bcrypt.compare(password, account.password);
+      if (!passwordMatch) {
+        throw { status: 401, message: "Invalid credentials" };
+      }
+
+      const tokenExpiry = rememberMe ? "7d" : "1h";
+      const token = jwt.sign(
+        {
+          id: account.id,
+          username: account.username,
+          namespace: account.namespace,
+          restaurantId: account.restaurantId,
+          role: account.role
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: tokenExpiry }
+      );
+
+      const { password: _, ...userWithoutPassword } = account;
+      return { user: userWithoutPassword, token };
+    } catch (error) {
+      console.info(`[FTH-RL] (__filename:${new Error().stack.split("\n")[1].trim().split(":").reverse()[1]})`, "error:", error);
     }
-
-    const loginParts = login.split("@");
-    if (loginParts.length !== 2) {
-      throw { status: 400, message: "Invalid login format. Use username@namespace" };
-    }
-
-    const [username, namespace] = loginParts;
-
-    const account = await crud.readLogin(CONST.TABLES.ACCOUNT.KIND, { username, namespace });
-    if (!account) {
-      throw { status: 401, message: "Invalid credentials" };
-    }
-
-    const passwordMatch = await bcrypt.compare(password, account.password);
-
-    if (!passwordMatch) {
-      throw { status: 401, message: "Invalid credentials" };
-    }
-
-    const token = jwt.sign(
-      {
-        id: account.id,
-        username: account.username,
-        namespace: account.namespace,
-        restaurantId: account.restaurantId,
-        role: account.role
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
-    const { password: _, ...userWithoutPassword } = account;
-    return { user: userWithoutPassword, token };
   },
 
-  async sendResetCode(user, email) {
+  async sendResetCode(email) {
     if (!email) {
       throw { status: 400, ...CONST.ERRORS.ERR_2000 };
     }
@@ -142,7 +147,7 @@ export default {
       throw { status: 400, ...CONST.ERRORS.ERR_2001 };
     }
 
-    const account = await crud.read(user, CONST.TABLES.ACCOUNT.KIND, { email });
+    const account = await crud.readLogin(CONST.TABLES.ACCOUNT.KIND, { email });
     if (!account) {
       throw { status: 404, message: "Account with this email does not exist" };
     }
@@ -172,8 +177,7 @@ export default {
     return { message: "Reset token sent to email" };
   },
 
-  async resetPassword(user, email, resetToken, newPassword) {
-    console.info(`[FTH-RL] (__filename:${new Error().stack.split("\n")[1].trim().split(":").reverse()[1]})`, email, resetToken, newPassword);
+  async resetPassword(email, resetToken, newPassword) {
     if (!email || !resetToken || !newPassword) {
       throw { status: 400, ...CONST.ERRORS.ERR_2000 };
     }
@@ -189,7 +193,7 @@ export default {
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await crud.update(user, CONST.TABLES.ACCOUNT.KIND, { email }, { password: hashedPassword });
+    await crud.updateLogin(CONST.TABLES.ACCOUNT.KIND, { email }, { password: hashedPassword });
 
     resetTokens.delete(email);
     return { message: "Password reset successfully" };
@@ -235,7 +239,7 @@ export default {
 
   async addStockEntry(user, data) {
     const {
-      itemId, quantity, invoiceUrl
+      itemId, quantity, invoiceUrl, expirationDate
     } = data;
     const userId = user.id;
     const restaurantId = user.restaurantId;
@@ -252,8 +256,50 @@ export default {
     await crud.update(user, CONST.TABLES.INVENTORY_ITEMS.KIND, { id: itemId }, { quantity: updatedQuantity });
 
     return await crud.create(user, CONST.TABLES.STOCK_ENTRIES.KIND, {
-      itemId, quantity, userId, invoiceUrl, restaurantId
+      itemId, quantity, userId, invoiceUrl, restaurantId, expirationDate
     });
+  },
+
+  async listStockEntries(user, filters = {}) {
+    if (!user) throw { status: 401, message: "Unauthorized" };
+    const {
+      dataInicio, dataFim, ...otherFilters
+    } = filters;
+    const restaurantId = user.restaurantId;
+
+    // Se houver filtro de data, usar rawQuery
+    if (dataInicio || dataFim) {
+      const where = ["\"restaurantId\" = $1"];
+      const params = [restaurantId];
+      let paramIdx = 2;
+
+      // Adiciona outros filtros
+      for (const [key, value] of Object.entries(otherFilters)) {
+        where.push(`"${key}" = $${paramIdx++}`);
+        params.push(value);
+      }
+
+      // Filtro de intervalo de data
+      if (dataInicio) {
+        where.push(`"expirationDate" >= $${paramIdx}`);
+        params.push(dataInicio);
+        paramIdx++;
+      }
+      if (dataFim) {
+        where.push(`"expirationDate" <= $${paramIdx}`);
+        params.push(dataFim);
+      }
+
+      const query = `
+        SELECT * FROM "StockEntries"
+        WHERE ${where.join(" AND ")}
+      `;
+      return await crud.rawQuery(user, query, params);
+    }
+
+    // Caso não haja filtro de data, usa o list padrão
+    const queryFilters = { ...otherFilters, restaurantId };
+    return await crud.list(user, CONST.TABLES.STOCK_ENTRIES.KIND, queryFilters);
   },
 
   async addStockExit(user, data) {
@@ -279,9 +325,61 @@ export default {
 
     await crud.update(user, CONST.TABLES.INVENTORY_ITEMS.KIND, { id: itemId }, { quantity: updatedQuantity });
 
+    const now = new Date();
+    const entryDate = now.toISOString().replace("T", " ").replace("Z", "");
+
     return await crud.create(user, CONST.TABLES.STOCK_EXITS.KIND, {
-      itemId, quantity, userId, destination, exitType, exitDate, restaurantId
+      itemId,
+      quantity,
+      userId,
+      destination,
+      exitType,
+      exitDate,
+      entryDate,
+      restaurantId
     });
+  },
+
+  async listStockExits(user, filters = {}) {
+    if (!user) throw { status: 401, message: "Unauthorized" };
+    const {
+      dataInicio, dataFim, ...otherFilters
+    } = filters;
+    const restaurantId = user.restaurantId;
+
+    // Se houver filtro de data, usar rawQuery
+    if (dataInicio || dataFim) {
+      const where = ["\"restaurantId\" = $1"];
+      const params = [restaurantId];
+      let paramIdx = 2;
+
+      // Adiciona outros filtros
+      for (const [key, value] of Object.entries(otherFilters)) {
+        where.push(`"${key}" = $${paramIdx++}`);
+        params.push(value);
+      }
+
+      // Filtro de intervalo de data
+      if (dataInicio) {
+        where.push(`"exitDate" >= $${paramIdx}`);
+        params.push(dataInicio);
+        paramIdx++;
+      }
+      if (dataFim) {
+        where.push(`"exitDate" <= $${paramIdx}`);
+        params.push(dataFim);
+      }
+
+      const query = `
+        SELECT * FROM "StockExits"
+        WHERE ${where.join(" AND ")}
+      `;
+      return await crud.rawQuery(user, query, params);
+    }
+
+    // Caso não haja filtro de data, usa o list padrão
+    const queryFilters = { ...otherFilters, restaurantId };
+    return await crud.list(user, CONST.TABLES.STOCK_ENTRIES.KIND, queryFilters);
   },
 
   async generateReport(user, data) {

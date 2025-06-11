@@ -92,7 +92,7 @@ const crud = {
   async readLogin(kind, filter) {
     const client = await pool.connect();
     try {
-      const table = `${kind}`;
+      const table = `"${kind}"`;
 
       const keys = Object.keys(filter);
       const values = Object.values(filter);
@@ -135,6 +135,49 @@ const crud = {
       return result.rows[0];
     } catch (error) {
       console.error("Error in update:", error.message);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  async updateLogin(kind, filter, data) {
+    if (!filter || !data) {
+      throw new Error(CONST.ERROR_MESSAGES.MISSING_PARAMS);
+    }
+    const table = `${kind}`;
+    const filterKeys = Object.keys(filter);
+    const filterValues = Object.values(filter);
+    const filterClause = filterKeys
+      .map((key, i) => `"${key}" = $${i + 1}`)
+      .join(" AND ");
+
+    const dataKeys = Object.keys(data);
+    const dataValues = Object.values(data);
+    const updateClause = dataKeys
+      .map((key, i) => `"${key}" = $${i + 1 + filterKeys.length}`)
+      .join(", ");
+    const query = `UPDATE "${table}" SET ${updateClause} WHERE ${filterClause} RETURNING *`;
+    const client = await pool.connect();
+    try {
+      const result = await client.query(query, [...filterValues, ...dataValues]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error in update:", error.message);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  async rawQuery(user, query, params = []) {
+    if (!user) throw new Error(CONST.ERROR_MESSAGES.MISSING_USER);
+    const client = await pool.connect();
+    try {
+      const result = await client.query(query, params);
+      return result.rows;
+    } catch (error) {
+      console.error("Error in rawQuery:", error);
       throw error;
     } finally {
       client.release();
