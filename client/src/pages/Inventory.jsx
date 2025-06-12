@@ -6,17 +6,14 @@ import {
   Button,
   Typography,
   Grid,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
   MenuItem,
+  Menu,
+  Divider,
 } from "@mui/material";
 import { UserContext } from "../contexts/UserContext";
 import InventoryTable from "../components/InventoryTable";
 import { getInventoryItems, getStockExits } from "../services/inventoryService";
-import Divider from "@mui/material/Divider";
 
 const DISPONIBILIDADES = ["Em Estoque", "Estoque Baixo", "Fora de Estoque"];
 const STATUS = ["Entrada", "Saída"];
@@ -43,7 +40,6 @@ export default function Inventory() {
   const [loading, setLoading] = useState(false);
 
   // Filtros
-  const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState({
     disponibilidade: "",
     status: "",
@@ -53,6 +49,9 @@ export default function Inventory() {
     produto: "",
   });
 
+  // Menu state
+  const [anchorEl, setAnchorEl] = useState(null);
+
   useEffect(() => {
     const fetchMetrics = async () => {
       setLoading(true);
@@ -61,16 +60,13 @@ export default function Inventory() {
           getInventoryItems(),
           getStockExits(),
         ]);
-
         const totalProducts = items.length;
         const lowStockItems = items.filter(
           (item) => item.quantity > 0 && item.quantity <= 10
         );
         const lowStock = lowStockItems.length;
-
         let highestExit = { name: "-", quantity: 0 };
         let lowestExit = { name: "-", quantity: Number.MAX_SAFE_INTEGER };
-
         if (exits.length > 0) {
           const exitsByItem = {};
           exits.forEach((exit) => {
@@ -85,21 +81,18 @@ export default function Inventory() {
             }
             exitsByItem[exit.itemId].quantity += exit.quantity;
           });
-
           const exitItems = Object.values(exitsByItem);
           if (exitItems.length > 0) {
             highestExit = exitItems.reduce(
               (max, item) => (item.quantity > max.quantity ? item : max),
               { quantity: 0 }
             );
-
             lowestExit = exitItems.reduce(
               (min, item) => (item.quantity < min.quantity ? item : min),
               { quantity: Number.MAX_SAFE_INTEGER }
             );
           }
         }
-
         setMetricsData({
           totalProducts,
           highestExit: {
@@ -125,7 +118,6 @@ export default function Inventory() {
         setLoading(false);
       }
     };
-
     fetchMetrics();
   }, []);
 
@@ -136,10 +128,18 @@ export default function Inventory() {
       </Box>
     );
   }
-
   if (userError) {
     return <Alert severity="error">{userError}</Alert>;
   }
+
+  // Menu handlers
+  const handleFilterClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleFilterClose = () => {
+    setAnchorEl(null);
+  };
+  const open = Boolean(anchorEl);
 
   return (
     <div style={{ marginRight: "30px" }}>
@@ -155,7 +155,6 @@ export default function Inventory() {
           <Typography variant="h5" fontWeight="600" mb={3}>
             Inventário Geral
           </Typography>
-
           <Grid
             container
             spacing={3}
@@ -268,10 +267,132 @@ export default function Inventory() {
             <Button
               variant="outlined"
               color="primary"
-              onClick={() => setFilterOpen(true)}
+              onClick={handleFilterClick}
             >
               Filtrar
             </Button>
+            <Menu
+              anchorEl={anchorEl}
+              open={open}
+              onClose={handleFilterClose}
+              anchorOrigin={{
+                vertical: "bottom",
+                horizontal: "right",
+              }}
+              transformOrigin={{
+                vertical: "top",
+                horizontal: "right",
+              }}
+              PaperProps={{ sx: { p: 2, minWidth: 320 } }}
+            >
+              <Box
+                component="form"
+                sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+              >
+                <TextField
+                  select
+                  label="Disponibilidade"
+                  value={filters.disponibilidade}
+                  onChange={(e) =>
+                    setFilters((f) => ({
+                      ...f,
+                      disponibilidade: e.target.value,
+                    }))
+                  }
+                  fullWidth
+                  margin="dense"
+                >
+                  <MenuItem value="">Todas</MenuItem>
+                  {DISPONIBILIDADES.map((opt) => (
+                    <MenuItem key={opt} value={opt}>
+                      {opt}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Status"
+                  value={filters.status}
+                  onChange={(e) =>
+                    setFilters((f) => ({ ...f, status: e.target.value }))
+                  }
+                  fullWidth
+                  margin="dense"
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  {STATUS.map((opt) => (
+                    <MenuItem key={opt} value={opt}>
+                      {opt}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label="Data Inicial (Validade/Saída)"
+                  type="date"
+                  value={filters.dataInicio || ""}
+                  onChange={(e) =>
+                    setFilters((f) => ({ ...f, dataInicio: e.target.value }))
+                  }
+                  fullWidth
+                  margin="dense"
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+                <TextField
+                  label="Data Final (Validade/Saída)"
+                  type="date"
+                  value={filters.dataFim || ""}
+                  onChange={(e) =>
+                    setFilters((f) => ({ ...f, dataFim: e.target.value }))
+                  }
+                  fullWidth
+                  margin="dense"
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+                <TextField
+                  select
+                  label="Categoria"
+                  value={filters.categoria}
+                  onChange={(e) =>
+                    setFilters((f) => ({ ...f, categoria: e.target.value }))
+                  }
+                  fullWidth
+                  margin="dense"
+                >
+                  <MenuItem value="">Todas</MenuItem>
+                  {CATEGORIAS.map((opt) => (
+                    <MenuItem key={opt} value={opt}>
+                      {opt}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label="Produto"
+                  value={filters.produto}
+                  onChange={(e) =>
+                    setFilters((f) => ({ ...f, produto: e.target.value }))
+                  }
+                  fullWidth
+                  margin="dense"
+                />
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: 1,
+                    mt: 1,
+                  }}
+                >
+                  <Button onClick={handleFilterClose}>Cancelar</Button>
+                  <Button
+                    onClick={handleFilterClose}
+                    variant="contained"
+                    color="primary"
+                  >
+                    Aplicar
+                  </Button>
+                </Box>
+              </Box>
+            </Menu>
             <Button variant="contained" color="primary">
               Adicionar Movimentação
             </Button>
@@ -281,103 +402,6 @@ export default function Inventory() {
           <InventoryTable filters={filters} />
         </div>
       </div>
-      <Dialog open={filterOpen} onClose={() => setFilterOpen(false)}>
-        <DialogTitle>Filtrar Movimentações</DialogTitle>
-        <DialogContent>
-          <TextField
-            select
-            label="Disponibilidade"
-            value={filters.disponibilidade}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, disponibilidade: e.target.value }))
-            }
-            fullWidth
-            margin="dense"
-          >
-            <MenuItem value="">Todas</MenuItem>
-            {DISPONIBILIDADES.map((opt) => (
-              <MenuItem key={opt} value={opt}>
-                {opt}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            label="Status"
-            value={filters.status}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, status: e.target.value }))
-            }
-            fullWidth
-            margin="dense"
-          >
-            <MenuItem value="">Todos</MenuItem>
-            {STATUS.map((opt) => (
-              <MenuItem key={opt} value={opt}>
-                {opt}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label="Data Inicial (Validade/Saída)"
-            type="date"
-            value={filters.dataInicio || ""}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, dataInicio: e.target.value }))
-            }
-            fullWidth
-            margin="dense"
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label="Data Final (Validade/Saída)"
-            type="date"
-            value={filters.dataFim || ""}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, dataFim: e.target.value }))
-            }
-            fullWidth
-            margin="dense"
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            select
-            label="Categoria"
-            value={filters.categoria}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, categoria: e.target.value }))
-            }
-            fullWidth
-            margin="dense"
-          >
-            <MenuItem value="">Todas</MenuItem>
-            {CATEGORIAS.map((opt) => (
-              <MenuItem key={opt} value={opt}>
-                {opt}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label="Produto"
-            value={filters.produto}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, produto: e.target.value }))
-            }
-            fullWidth
-            margin="dense"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setFilterOpen(false)}>Cancelar</Button>
-          <Button
-            onClick={() => setFilterOpen(false)}
-            variant="contained"
-            color="primary"
-          >
-            Aplicar
-          </Button>
-        </DialogActions>
-      </Dialog>
     </div>
   );
 }

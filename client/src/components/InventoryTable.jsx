@@ -6,9 +6,60 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
-import { Box, CircularProgress, Alert, TablePagination } from "@mui/material";
+import {
+  Box,
+  CircularProgress,
+  Alert,
+  TablePagination,
+  TableSortLabel,
+} from "@mui/material";
 import { getStockMovements } from "../services/inventoryService";
 import { UserContext } from "../contexts/UserContext";
+
+const columns = [
+  { id: "itemName", label: "Produto" },
+  { id: "price", label: "Preço de Compra" },
+  { id: "quantity", label: "Quantidade" },
+  { id: "category", label: "Categoria" },
+  { id: "expirationDate", label: "Data de Validade/Saída" },
+  { id: "type", label: "Status" },
+  { id: "availability", label: "Disponibilidade" },
+];
+
+function descendingComparator(a, b, orderBy) {
+  if (orderBy === "availability") {
+    return a.availability.status.localeCompare(b.availability.status);
+  }
+  if (orderBy === "price") {
+    // Remove "R$ " and parse as float, fallback to 0 if not a number
+    const aPrice = parseFloat(
+      (a.price || "0")
+        .toString()
+        .replace(/[^\d,.-]/g, "")
+        .replace(",", ".")
+    );
+    const bPrice = parseFloat(
+      (b.price || "0")
+        .toString()
+        .replace(/[^\d,.-]/g, "")
+        .replace(",", ".")
+    );
+    return bPrice - aPrice;
+  }
+  if (typeof b[orderBy] === "number" && typeof a[orderBy] === "number") {
+    return b[orderBy] - a[orderBy];
+  }
+  // For strings and fallback
+  return (b[orderBy] || "")
+    .toString()
+    .localeCompare((a[orderBy] || "").toString(), "pt-BR", { numeric: true });
+}
+
+function getComparator(order, orderBy) {
+  return order === "desc"
+    ? (a, b) => descendingComparator(a, b, orderBy)
+    : (a, b) => -descendingComparator(a, b, orderBy);
+}
 
 function InventoryTable({ filters = {} }) {
   const { user } = useContext(UserContext);
@@ -17,13 +68,14 @@ function InventoryTable({ filters = {} }) {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(0);
   const rowsPerPage = 10;
+  const [order, setOrder] = useState("desc");
+  const [orderBy, setOrderBy] = useState("expirationDate");
 
   useEffect(() => {
     const fetchMovements = async () => {
       setLoading(true);
       try {
         const data = await getStockMovements(filters);
-        // Remove items not found (itemName === "Item not found")
         const filteredData = data.filter(
           (item) => item.itemName !== "Item not found"
         );
@@ -42,14 +94,25 @@ function InventoryTable({ filters = {} }) {
     }
   }, [user, filters]);
 
-  const paginatedMovements = movements.slice(
+  useEffect(() => {
+    setPage(0);
+  }, [filters]);
+
+  const handleRequestSort = (property) => {
+    const isAsc = orderBy === property && order === "asc";
+    setOrder(isAsc ? "desc" : "asc");
+    setOrderBy(property);
+  };
+
+  const sortedMovements = React.useMemo(
+    () => [...movements].sort(getComparator(order, orderBy)),
+    [movements, order, orderBy]
+  );
+
+  const paginatedMovements = sortedMovements.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
   );
-
-  useEffect(() => {
-    setPage(0); // Resetar para a primeira página ao mudar filtros
-  }, [filters]);
 
   if (loading) {
     return (
@@ -68,15 +131,21 @@ function InventoryTable({ filters = {} }) {
       <Table aria-label="movimentos de estoque">
         <TableHead>
           <TableRow>
-            <TableCell sx={{ color: "#667085" }}>Produto</TableCell>
-            <TableCell sx={{ color: "#667085" }}>Preço de Compra</TableCell>
-            <TableCell sx={{ color: "#667085" }}>Quantidade</TableCell>
-            <TableCell sx={{ color: "#667085" }}>Categoria</TableCell>
-            <TableCell sx={{ color: "#667085" }}>
-              Data de Validade/Saída
-            </TableCell>
-            <TableCell sx={{ color: "#667085" }}>Status</TableCell>
-            <TableCell sx={{ color: "#667085" }}>Disponibilidade</TableCell>
+            {columns.map((col) => (
+              <TableCell
+                key={col.id}
+                sx={{ color: "#667085", fontWeight: "bold", cursor: "pointer" }}
+                sortDirection={orderBy === col.id ? order : false}
+              >
+                <TableSortLabel
+                  active={orderBy === col.id}
+                  direction={orderBy === col.id ? order : "asc"}
+                  onClick={() => handleRequestSort(col.id)}
+                >
+                  {col.label}
+                </TableSortLabel>
+              </TableCell>
+            ))}
           </TableRow>
         </TableHead>
         <TableBody>
