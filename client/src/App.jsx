@@ -5,6 +5,7 @@ import MainLayout from "./pages/MainLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
+import RegisteredProducts from "./pages/RegisteredProducts";
 
 const token =
   localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
@@ -21,6 +22,7 @@ function App() {
           <Route path="/" element={<Navigate to="/inventory" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/inventory" element={<Inventory />} />
+          <Route path="/registered-products" element={<RegisteredProducts />} />
           {/* <Route path="/relatorio" element={<Relatorio />} />
           <Route path="/configuracoes" element={<Configuracoes />} /> */}
         </Route>

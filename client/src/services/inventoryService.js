@@ -52,7 +52,7 @@ export async function addStockEntry(entryData) {
  * @returns {Promise<Object>} - The created stock exit
  */
 export async function addStockExit(exitData) {
-  const endpoint = "/stock_exit";
+  const endpoint = "/stock_exits";
   return await apiRequest(endpoint, {
     method: "POST",
     body: JSON.stringify(exitData),
@@ -160,7 +160,8 @@ export async function getStockMovements(filters = {}) {
         expirationDate: entry.expirationDate && new Date(entry.expirationDate).toLocaleDateString("pt-BR"),
         availability,
         type: "Entrada",
-        movementDate: entry.createdAt || Date.now()
+        movementDate: entry.createdAt || Date.now(),
+        rawDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
       };
     }).filter(Boolean);
 
@@ -180,7 +181,8 @@ export async function getStockMovements(filters = {}) {
         exitType: exit.exitType || "-",
         availability,
         type: "Saída",
-        movementDate: exit.exitDate ? new Date(exit.exitDate).getTime() : Date.now()
+        movementDate: exit.exitDate ? new Date(exit.exitDate).getTime() : Date.now(),
+        rawDate: exit.entryDate ? new Date(exit.entryDate) : new Date(),
       };
     }).filter(Boolean);
 
@@ -192,3 +194,13 @@ export async function getStockMovements(filters = {}) {
     throw error;
   }
 }
+
+const inventoryService = {
+  getInventoryItems: async (filters = {}) => {
+    const queryString = new URLSearchParams(filters).toString();
+    const endpoint = `/inventory_items${queryString ? `?${queryString}` : ""}`;
+    return await apiRequest(endpoint, { method: "GET" });
+  },
+};
+
+export default inventoryService;

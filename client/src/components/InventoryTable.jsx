@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { getStockMovements } from "../services/inventoryService";
 import { UserContext } from "../contexts/UserContext";
+import { useWindowSize } from "../hooks/useWindowSize"; // Add a custom hook to get window size
 
 const columns = [
   { id: "itemName", label: "Produto" },
@@ -31,7 +32,6 @@ function descendingComparator(a, b, orderBy) {
     return a.availability.status.localeCompare(b.availability.status);
   }
   if (orderBy === "price") {
-    // Remove "R$ " and parse as float, fallback to 0 if not a number
     const aPrice = parseFloat(
       (a.price || "0")
         .toString()
@@ -49,7 +49,6 @@ function descendingComparator(a, b, orderBy) {
   if (typeof b[orderBy] === "number" && typeof a[orderBy] === "number") {
     return b[orderBy] - a[orderBy];
   }
-  // For strings and fallback
   return (b[orderBy] || "")
     .toString()
     .localeCompare((a[orderBy] || "").toString(), "pt-BR", { numeric: true });
@@ -61,15 +60,24 @@ function getComparator(order, orderBy) {
     : (a, b) => -descendingComparator(a, b, orderBy);
 }
 
-function InventoryTable({ filters = {} }) {
+const DEFAULT_ORDER_BY = "date";
+const DEFAULT_ORDER = "desc";
+
+function InventoryTable({ filters = {}, reload }) {
   const { user } = useContext(UserContext);
   const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(0);
-  const rowsPerPage = 10;
-  const [order, setOrder] = useState("desc");
-  const [orderBy, setOrderBy] = useState("expirationDate");
+  const [order, setOrder] = useState(DEFAULT_ORDER);
+  const [orderBy, setOrderBy] = useState(DEFAULT_ORDER_BY);
+
+  const { height } = useWindowSize();
+  const rowsPerPage = React.useMemo(() => {
+    if (height === 968) return 10;
+    const baseRows = Math.floor((height / 968) * 10);
+    return Math.max(baseRows, 5);
+  }, [height]);
 
   useEffect(() => {
     const fetchMovements = async () => {
@@ -92,22 +100,32 @@ function InventoryTable({ filters = {} }) {
     if (user) {
       fetchMovements();
     }
-  }, [user, filters]);
+  }, [user, filters, reload]);
 
   useEffect(() => {
     setPage(0);
   }, [filters]);
 
   const handleRequestSort = (property) => {
-    const isAsc = orderBy === property && order === "asc";
-    setOrder(isAsc ? "desc" : "asc");
-    setOrderBy(property);
+    if (orderBy !== property) {
+      setOrder("desc");
+      setOrderBy(property);
+    } else if (order === "desc") {
+      setOrder("asc");
+    } else if (order === "asc") {
+      setOrder(DEFAULT_ORDER);
+      setOrderBy(DEFAULT_ORDER_BY);
+    }
   };
 
-  const sortedMovements = React.useMemo(
-    () => [...movements].sort(getComparator(order, orderBy)),
-    [movements, order, orderBy]
-  );
+  const sortedMovements = React.useMemo(() => {
+    if (orderBy === "date") {
+      return [...movements].sort(
+        (a, b) => new Date(b.rawDate) - new Date(a.rawDate)
+      );
+    }
+    return [...movements].sort(getComparator(order, orderBy));
+  }, [movements, order, orderBy]);
 
   const paginatedMovements = sortedMovements.slice(
     page * rowsPerPage,

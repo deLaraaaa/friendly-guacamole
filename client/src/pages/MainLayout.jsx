@@ -1,5 +1,4 @@
-// src/components/MainLayout.jsx
-import React from "react";
+import React, { useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   Drawer,
@@ -9,6 +8,7 @@ import {
   ListItemText,
   Box,
   Divider,
+  Collapse,
 } from "@mui/material";
 import {
   HomeFilled as DashboardIcon,
@@ -16,6 +16,8 @@ import {
   Assessment as AssessmentIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
+  ExpandLess,
+  ExpandMore,
 } from "@mui/icons-material";
 
 const drawerWidth = 240;
@@ -23,6 +25,7 @@ const drawerWidth = 240;
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [inventoryOpen, setInventoryOpen] = useState(true);
 
   const menuItemsTop = [
     {
@@ -34,6 +37,16 @@ export default function MainLayout() {
       text: "Inventário",
       icon: <InventoryIcon />,
       path: "/inventory",
+      children: [
+        {
+          text: "Produtos",
+          path: "/inventory",
+        },
+        {
+          text: "Produtos Cadastrados",
+          path: "/registered-products",
+        },
+      ],
     },
     {
       text: "Relatório",
@@ -86,23 +99,63 @@ export default function MainLayout() {
 
         {/* Menu principal */}
         <List>
-          {menuItemsTop.map(({ text, icon, path }) => (
-            <ListItemButton
-              key={text}
-              selected={location.pathname === path}
-              onClick={() => navigate(path)}
-              sx={{
-                "&.Mui-selected": {
-                  backgroundColor: "rgba(25, 118, 210, 0.08)",
-                  color: "primary.main",
-                  "& .MuiListItemIcon-root": { color: "primary.main" },
-                },
-              }}
-            >
-              <ListItemIcon>{icon}</ListItemIcon>
-              <ListItemText primary={text} />
-            </ListItemButton>
-          ))}
+          {menuItemsTop.map((item) =>
+            item.text === "Inventário" ? (
+              <React.Fragment key={item.text}>
+                <ListItemButton
+                  selected={location.pathname === item.path}
+                  onClick={() => {
+                    setInventoryOpen((open) => !open);
+                    navigate(item.path);
+                  }}
+                  sx={{
+                    "&.Mui-selected": {
+                      backgroundColor: "rgba(25, 118, 210, 0.08)",
+                      color: "primary.main",
+                      "& .MuiListItemIcon-root": { color: "primary.main" },
+                    },
+                  }}
+                >
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.text} />
+                  {inventoryOpen ? <ExpandLess /> : <ExpandMore />}
+                </ListItemButton>
+                <Collapse in={inventoryOpen} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {item.children.map((child) => (
+                      <ListItemButton
+                        key={child.text}
+                        sx={{ pl: 4 }}
+                        selected={location.pathname === child.path}
+                        onClick={() => navigate(child.path)}
+                      >
+                        <ListItemText
+                          primary={child.text}
+                          primaryTypographyProps={{ fontSize: "0.92rem" }}
+                        />
+                      </ListItemButton>
+                    ))}
+                  </List>
+                </Collapse>
+              </React.Fragment>
+            ) : (
+              <ListItemButton
+                key={item.text}
+                selected={location.pathname === item.path}
+                onClick={() => navigate(item.path)}
+                sx={{
+                  "&.Mui-selected": {
+                    backgroundColor: "rgba(25, 118, 210, 0.08)",
+                    color: "primary.main",
+                    "& .MuiListItemIcon-root": { color: "primary.main" },
+                  },
+                }}
+              >
+                <ListItemIcon>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.text} />
+              </ListItemButton>
+            )
+          )}
         </List>
 
         <Box sx={{ flexGrow: 1 }} />

@@ -239,7 +239,7 @@ export default {
 
   async addStockEntry(user, data) {
     const {
-      itemId, quantity, invoiceUrl, expirationDate
+      itemId, quantity, invoiceUrl, expirationDate, price // <-- add price here
     } = data;
     const userId = user.id;
     const restaurantId = user.restaurantId;
@@ -256,7 +256,13 @@ export default {
     await crud.update(user, CONST.TABLES.INVENTORY_ITEMS.KIND, { id: itemId }, { quantity: updatedQuantity });
 
     return await crud.create(user, CONST.TABLES.STOCK_ENTRIES.KIND, {
-      itemId, quantity, userId, invoiceUrl, restaurantId, expirationDate
+      itemId,
+      quantity,
+      userId,
+      invoiceUrl,
+      restaurantId,
+      expirationDate,
+      price
     });
   },
 
@@ -379,7 +385,7 @@ export default {
 
     // Caso não haja filtro de data, usa o list padrão
     const queryFilters = { ...otherFilters, restaurantId };
-    return await crud.list(user, CONST.TABLES.STOCK_ENTRIES.KIND, queryFilters);
+    return await crud.list(user, CONST.TABLES.STOCK_EXITS.KIND, queryFilters);
   },
 
   async generateReport(user, data) {
