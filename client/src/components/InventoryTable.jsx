@@ -176,7 +176,11 @@ function InventoryTable({ filters = {}, reload }) {
                 <TableCell>{item.price ? "R$ " + item.price : "-"}</TableCell>
                 <TableCell>{item.quantity}</TableCell>
                 <TableCell>{item.category || "-"}</TableCell>
-                <TableCell>{item.expirationDate || item.date || "-"}</TableCell>
+                <TableCell>
+                  {item.type === "Entrada"
+                    ? item.expirationDate || "Não Perecível"
+                    : item.expirationDate || item.date || "-"}
+                </TableCell>
                 <TableCell
                   sx={{
                     color: item.type === "Entrada" ? "green" : "red",

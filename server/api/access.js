@@ -219,27 +219,27 @@ export default {
   async addInventoryItem(user, data) {
     console.info(`[FTH-RL] (__filename:${new Error().stack.split("\n")[1].trim().split(":").reverse()[1]})`, data);
     const {
-      name, category, quantity, expirationDate,
+      name, category, quantity,
     } = data;
 
     console.info(`[FTH-RL] (__filename:${new Error().stack.split("\n")[1].trim().split(":").reverse()[1]})`, user);
 
     if (user.role !== CONST.TABLES.ACCOUNT.ROLE.ADMIN) throw { status: 404, ...CONST.ERRORS.ERR_1001 };
 
-    if (!name || !category || !quantity) {
-      throw { status: 400, message: "Name, category and quantity are required" };
+    if (!name || !category) {
+      throw { status: 400, message: "Name and category are required" };
     }
 
     const restaurantId = user.restaurantId;
 
     return crud.create(user, CONST.TABLES.INVENTORY_ITEMS.KIND, {
-      name, category, quantity, expirationDate, restaurantId
+      name, category, quantity, restaurantId
     });
   },
 
   async addStockEntry(user, data) {
     const {
-      itemId, quantity, invoiceUrl, expirationDate, price // <-- add price here
+      itemId, quantity, invoiceUrl, expirationDate, price
     } = data;
     const userId = user.id;
     const restaurantId = user.restaurantId;

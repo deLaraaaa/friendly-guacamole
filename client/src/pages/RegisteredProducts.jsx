@@ -2,9 +2,16 @@ import React, { useEffect, useState } from "react";
 import { Box, Typography, Grid, Button } from "@mui/material";
 import { getInventoryItems } from "../services/inventoryService";
 import ProductCard from "../components/ProductCard";
+import AddProductModal from "../components/AddProductModal";
 
 export default function RegisteredProducts() {
   const [inventoryItems, setInventoryItems] = useState([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const handleOpenModal = () => setModalOpen(true);
+  const handleCloseModal = () => setModalOpen(false);
+  const handleProductAdded = () => {
+    getInventoryItems().then(setInventoryItems);
+  };
 
   useEffect(() => {
     getInventoryItems()
@@ -41,14 +48,19 @@ export default function RegisteredProducts() {
           bgcolor: "common.white",
           borderRadius: "8px 8px 0 0",
           p: 3,
-          overflow: "hidden", // hide any accidental overflow at this level
-          minHeight: 0, // <-- critical so child flex can scroll instead of growing
+          overflow: "hidden",
+          minHeight: 0,
         }}
       >
         <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-          <Button variant="contained" color="primary">
+          <Button variant="contained" color="primary" onClick={handleOpenModal}>
             Adicionar Produto
           </Button>
+          <AddProductModal
+            open={modalOpen}
+            onClose={handleCloseModal}
+            onSuccess={handleProductAdded}
+          />
         </Box>
 
         {/* Only *this* area ever scrolls, and only vertically */}

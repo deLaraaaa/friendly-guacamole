@@ -85,7 +85,7 @@ router.post("/api/reset_password", async (req, res) => {
   }
 });
 
-router.post("/api/add_item", async (req, res) => {
+router.post("/api/add_item", authenticate, async (req, res) => {
   try {
     const result = await api.addInventoryItem(req.user, req.body);
     res.status(200).json(result);
