@@ -1,0 +1,218 @@
+name: Setup Pre-Production Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      server_host:
+        description: 'Server hostname or IP'
+        required: true
+        default: 'your-server.com'
+      server_user:
+        description: 'SSH username'
+        required: true
+        default: 'ubuntu'
+      database_url:
+        description: 'Database connection string'
+        required: true
+        default: 'postgresql://user:password@localhost:5432/friendly_guacamole_preprod'
+
+jobs:
+  setup:
+    name: Setup Pre-Production Server
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Create server setup script
+      run: |
+        cat > setup-server.sh << 'EOF'
+        #!/bin/bash
+        set -e
+        
+        echo "🚀 Setting up pre-production server..."
+        
+        # Update system
+        sudo apt update && sudo apt upgrade -y
+        
+        # Install Node.js 18
+        curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+        
+        # Install PM2 globally
+        sudo npm install -g pm2
+        
+        # Install Docker (optional)
+        curl -fsSL https://get.docker.com -o get-docker.sh
+        sudo sh get-docker.sh
+        sudo usermod -aG docker $USER
+        
+        # Install Docker Compose
+        sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+        
+        # Create application directory
+        sudo mkdir -p /opt/friendly-guacamole-preprod
+        sudo chown $USER:$USER /opt/friendly-guacamole-preprod
+        
+        # Create logs directory
+        mkdir -p /opt/friendly-guacamole-preprod/logs
+        
+        # Install PostgreSQL (if not already installed)
+        sudo apt install -y postgresql postgresql-contrib
+        
+        # Create database
+        sudo -u postgres psql -c "CREATE DATABASE friendly_guacamole_preprod;"
+        sudo -u postgres psql -c "CREATE USER friendly_user WITH PASSWORD 'secure_password';"
+        sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE friendly_guacamole_preprod TO friendly_user;"
+        
+        # Configure PostgreSQL
+        sudo sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/*/main/postgresql.conf
+        sudo sed -i "s/local   all             all                                     peer/local   all             all                                     md5/" /etc/postgresql/*/main/pg_hba.conf
+        sudo systemctl restart postgresql
+        
+        # Configure firewall
+        sudo ufw allow 22
+        sudo ufw allow 3001
+        sudo ufw allow 5432
+        sudo ufw --force enable
+        
+        # Install nginx (optional, for reverse proxy)
+        sudo apt install -y nginx
+        
+        # Create nginx configuration
+        sudo tee /etc/nginx/sites-available/friendly-guacamole-preprod << 'EOF'
+        server {
+            listen 80;
+            server_name ${{ github.event.inputs.server_host }};
+            
+            location / {
+                proxy_pass http://localhost:3001;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection 'upgrade';
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_cache_bypass $http_upgrade;
+            }
+        }
+        EOF
+        
+        # Enable nginx site
+        sudo ln -s /etc/nginx/sites-available/friendly-guacamole-preprod /etc/nginx/sites-enabled/
+        sudo nginx -t
+        sudo systemctl restart nginx
+        
+        echo "✅ Server setup completed!"
+        echo "📋 Next steps:"
+        echo "1. Configure your .env file with database credentials"
+        echo "2. Run the deployment workflow"
+        echo "3. Test the application"
+        EOF
+        
+        chmod +x setup-server.sh
+        
+    - name: Create environment configuration
+      run: |
+        cat > .env.preprod << 'EOF'
+        # Database Configuration
+        DB_HOST=localhost
+        DB_PORT=5432
+        DB_NAME=friendly_guacamole_preprod
+        DB_USER=friendly_user
+        DB_PASSWORD=secure_password
+        
+        # JWT Configuration
+        JWT_SECRET=your_super_secure_jwt_secret_here_change_this
+        JWT_EXPIRES_IN=24h
+        
+        # CORS Configuration
+        CORS_ORIGIN=http://${{ github.event.inputs.server_host }}
+        
+        # Email Configuration
+        EMAIL_HOST=smtp.gmail.com
+        EMAIL_PORT=587
+        EMAIL_USER=your_email@gmail.com
+        EMAIL_PASS=your_app_password
+        
+        # Server Configuration
+        PORT=3001
+        NODE_ENV=preproduction
+        EOF
+        
+    - name: Create monitoring script
+      run: |
+        cat > monitor.sh << 'EOF'
+        #!/bin/bash
+        
+        echo "📊 Friendly Guacamole Pre-Production Monitoring"
+        echo "=============================================="
+        
+        # Check PM2 status
+        echo "🔧 PM2 Status:"
+        pm2 status
+        
+        # Check application health
+        echo ""
+        echo "🏥 Health Check:"
+        curl -s http://localhost:3001/api/validate_token && echo "✅ API is healthy" || echo "❌ API is down"
+        
+        # Check database connection
+        echo ""
+        echo "🗄️ Database Status:"
+        sudo -u postgres psql -c "SELECT 1;" friendly_guacamole_preprod && echo "✅ Database is healthy" || echo "❌ Database is down"
+        
+        # Check disk space
+        echo ""
+        echo "💾 Disk Usage:"
+        df -h /opt/friendly-guacamole-preprod
+        
+        # Check memory usage
+        echo ""
+        echo "🧠 Memory Usage:"
+        free -h
+        
+        # Show recent logs
+        echo ""
+        echo "📝 Recent Logs:"
+        tail -n 20 /opt/friendly-guacamole-preprod/logs/combined.log
+        EOF
+        
+        chmod +x monitor.sh
+        
+    - name: Upload setup files
+      uses: actions/upload-artifact@v4
+      with:
+        name: server-setup-files
+        path: |
+          setup-server.sh
+          .env.preprod
+          monitor.sh
+        retention-days: 30
+        
+    - name: Create setup instructions
+      run: |
+        echo "## 🛠️ Pre-Production Server Setup Instructions" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Prerequisites" >> $GITHUB_STEP_SUMMARY
+        echo "- Ubuntu 20.04+ server" >> $GITHUB_STEP_SUMMARY
+        echo "- SSH access with sudo privileges" >> $GITHUB_STEP_SUMMARY
+        echo "- Domain name pointing to server (optional)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🚀 Setup Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Download the setup files from artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "2. Upload \`setup-server.sh\` to your server" >> $GITHUB_STEP_SUMMARY
+        echo "3. Run: \`chmod +x setup-server.sh && ./setup-server.sh\`" >> $GITHUB_STEP_SUMMARY
+        echo "4. Configure your \`.env\` file with the provided template" >> $GITHUB_STEP_SUMMARY
+        echo "5. Set up SSH keys for GitHub Actions" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔑 Required GitHub Secrets" >> $GITHUB_STEP_SUMMARY
+        echo "- \`SSH_PRIVATE_KEY\`: Your private SSH key" >> $GITHUB_STEP_SUMMARY
+        echo "- \`SSH_USER\`: SSH username (e.g., ubuntu)" >> $GITHUB_STEP_SUMMARY
+        echo "- \`SSH_HOST\`: Server hostname or IP" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Monitoring" >> $GITHUB_STEP_SUMMARY
+        echo "Use the \`monitor.sh\` script to check application status" >> $GITHUB_STEP_SUMMARY

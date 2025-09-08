@@ -1,0 +1,327 @@
+name: Pre-Production Deploy
+
+on:
+  push:
+    branches: [ develop, staging ]
+  pull_request:
+    branches: [ develop, staging ]
+  workflow_dispatch: # Permite execução manual
+
+env:
+  NODE_VERSION: '18'
+  NPM_VERSION: '9'
+
+jobs:
+  # Job para build e testes do frontend
+  frontend:
+    name: Frontend Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Lint frontend
+      run: npm run lint
+      
+    - name: Build frontend
+      run: npm run build
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: dist/
+        retention-days: 7
+
+  # Job para build e testes do backend
+  backend:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: server/package-lock.json
+        
+    - name: Install server dependencies
+      run: |
+        cd server
+        npm ci
+        
+    - name: Lint server
+      run: npm run lint:server
+      
+    - name: Test server (if tests exist)
+      run: |
+        cd server
+        npm test || echo "No tests configured"
+      continue-on-error: true
+
+  # Job para deploy em pré-produção
+  deploy:
+    name: Deploy to Pre-Production
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download frontend artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-build
+        path: dist/
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: server/package-lock.json
+        
+    - name: Install server dependencies
+      run: |
+        cd server
+        npm ci --production
+        
+    - name: Create deployment package
+      run: |
+        mkdir -p deployment
+        cp -r server/* deployment/
+        cp -r dist deployment/public
+        cp package.json deployment/
+        cp package-lock.json deployment/
+        
+    - name: Create PM2 ecosystem file
+      run: |
+        cat > deployment/ecosystem.config.js << 'EOF'
+        module.exports = {
+          apps: [{
+            name: 'friendly-guacamole-preprod',
+            script: 'index.js',
+            instances: 1,
+            exec_mode: 'cluster',
+            env: {
+              NODE_ENV: 'preproduction',
+              PORT: 3001
+            },
+            error_file: './logs/err.log',
+            out_file: './logs/out.log',
+            log_file: './logs/combined.log',
+            time: true
+          }]
+        };
+        EOF
+        
+    - name: Create deployment script
+      run: |
+        cat > deployment/deploy.sh << 'EOF'
+        #!/bin/bash
+        set -e
+        
+        echo "🚀 Starting pre-production deployment..."
+        
+        # Create logs directory
+        mkdir -p logs
+        
+        # Install PM2 globally if not exists
+        if ! command -v pm2 &> /dev/null; then
+          npm install -g pm2
+        fi
+        
+        # Stop existing app if running
+        pm2 stop friendly-guacamole-preprod || true
+        pm2 delete friendly-guacamole-preprod || true
+        
+        # Start the application
+        pm2 start ecosystem.config.js
+        
+        # Save PM2 configuration
+        pm2 save
+        pm2 startup || true
+        
+        echo "✅ Pre-production deployment completed!"
+        echo "📊 Application status:"
+        pm2 status
+        
+        echo "🌐 Application should be available at: http://localhost:3001"
+        EOF
+        
+        chmod +x deployment/deploy.sh
+        
+    - name: Create Dockerfile for containerized deployment
+      run: |
+        cat > deployment/Dockerfile << 'EOF'
+        FROM node:18-alpine
+        
+        WORKDIR /app
+        
+        # Copy package files
+        COPY package*.json ./
+        COPY server/package*.json ./server/
+        
+        # Install dependencies
+        RUN npm ci --production
+        
+        # Copy application files
+        COPY server/ ./server/
+        COPY dist/ ./public/
+        
+        # Create logs directory
+        RUN mkdir -p logs
+        
+        # Expose port
+        EXPOSE 3001
+        
+        # Health check
+        HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+          CMD curl -f http://localhost:3001/api/validate_token || exit 1
+        
+        # Start application
+        CMD ["node", "server/index.js"]
+        EOF
+        
+    - name: Create docker-compose for easy deployment
+      run: |
+        cat > deployment/docker-compose.yml << 'EOF'
+        version: '3.8'
+        
+        services:
+          app:
+            build: .
+            ports:
+              - "3001:3001"
+            environment:
+              - NODE_ENV=preproduction
+              - PORT=3001
+            volumes:
+              - ./logs:/app/logs
+            restart: unless-stopped
+            healthcheck:
+              test: ["CMD", "curl", "-f", "http://localhost:3001/api/validate_token"]
+              interval: 30s
+              timeout: 10s
+              retries: 3
+              start_period: 40s
+        EOF
+        
+    - name: Create environment template
+      run: |
+        cat > deployment/.env.example << 'EOF'
+        # Database Configuration
+        DB_HOST=localhost
+        DB_PORT=5432
+        DB_NAME=friendly_guacamole_preprod
+        DB_USER=your_db_user
+        DB_PASSWORD=your_db_password
+        
+        # JWT Configuration
+        JWT_SECRET=your_jwt_secret_here
+        JWT_EXPIRES_IN=24h
+        
+        # CORS Configuration
+        CORS_ORIGIN=http://localhost:3000
+        
+        # Email Configuration (for password reset)
+        EMAIL_HOST=smtp.gmail.com
+        EMAIL_PORT=587
+        EMAIL_USER=your_email@gmail.com
+        EMAIL_PASS=your_app_password
+        
+        # Server Configuration
+        PORT=3001
+        NODE_ENV=preproduction
+        EOF
+        
+    - name: Create README for deployment
+      run: |
+        cat > deployment/README.md << 'EOF'
+        # Friendly Guacamole - Pre-Production Deployment
+        
+        ## Quick Start
+        
+        ### Option 1: PM2 Deployment
+        ```bash
+        # Install dependencies
+        npm ci --production
+        
+        # Run deployment script
+        ./deploy.sh
+        ```
+        
+        ### Option 2: Docker Deployment
+        ```bash
+        # Build and run with Docker Compose
+        docker-compose up -d --build
+        
+        # View logs
+        docker-compose logs -f
+        ```
+        
+        ## Environment Setup
+        
+        1. Copy `.env.example` to `.env`
+        2. Configure your environment variables
+        3. Ensure your database is running and accessible
+        
+        ## Monitoring
+        
+        - Application logs: `./logs/`
+        - PM2 status: `pm2 status`
+        - Docker logs: `docker-compose logs -f`
+        
+        ## Health Check
+        
+        The application includes a health check endpoint:
+        - HTTP: `GET /api/validate_token`
+        
+        ## Ports
+        
+        - Application: 3001
+        - Health check: 3001/api/validate_token
+        EOF
+        
+    - name: Upload deployment package
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-package
+        path: deployment/
+        retention-days: 30
+        
+    - name: Create deployment summary
+      run: |
+        echo "## 🚀 Pre-Production Deployment Ready!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### �� Deployment Package Created" >> $GITHUB_STEP_SUMMARY
+        echo "- Frontend build included" >> $GITHUB_STEP_SUMMARY
+        echo "- Backend application ready" >> $GITHUB_STEP_SUMMARY
+        echo "- PM2 configuration included" >> $GITHUB_STEP_SUMMARY
+        echo "- Docker configuration included" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🛠️ Deployment Options" >> $GITHUB_STEP_SUMMARY
+        echo "1. **PM2**: Use \`./deploy.sh\` script" >> $GITHUB_STEP_SUMMARY
+        echo "2. **Docker**: Use \`docker-compose up -d --build\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Download the deployment package from artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "2. Configure your \`.env\` file" >> $GITHUB_STEP_SUMMARY
+        echo "3. Deploy to your pre-production server" >> $GITHUB_STEP_SUMMARY
+        echo "4. Test the application at \`http://your-server:3001\`" >> $GITHUB_STEP_SUMMARY

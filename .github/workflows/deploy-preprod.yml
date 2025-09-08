@@ -1,0 +1,92 @@
+name: Deploy to Pre-Production Server
+
+on:
+  workflow_run:
+    workflows: ["Pre-Production Deploy"]
+    types: [completed]
+    branches: [develop, staging]
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download deployment artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: deployment-package
+        path: deployment/
+        
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        
+    - name: Deploy to server
+      run: |
+        # Create deployment directory on server
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p /opt/friendly-guacamole-preprod"
+        
+        # Copy deployment files
+        scp -o StrictHostKeyChecking=no -r deployment/* ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/friendly-guacamole-preprod/
+        
+        # Run deployment on server
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOL'
+          cd /opt/friendly-guacamole-preprod
+          
+          # Install dependencies
+          npm ci --production
+          
+          # Create logs directory
+          mkdir -p logs
+          
+          # Install PM2 if not exists
+          if ! command -v pm2 &> /dev/null; then
+            npm install -g pm2
+          fi
+          
+          # Stop existing app
+          pm2 stop friendly-guacamole-preprod || true
+          pm2 delete friendly-guacamole-preprod || true
+          
+          # Start application
+          pm2 start ecosystem.config.js
+          pm2 save
+          
+          # Show status
+          pm2 status
+        EOL
+        
+    - name: Health Check
+      run: |
+        # Wait for application to start
+        sleep 30
+        
+        # Check if application is responding
+        curl -f http://${{ secrets.SSH_HOST }}:3001/api/validate_token || {
+          echo "❌ Health check failed"
+          exit 1
+        }
+        
+        echo "✅ Application is healthy and responding"
+        
+    - name: Notify deployment success
+      run: |
+        echo "## 🎉 Pre-Production Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🌐 Application URLs" >> $GITHUB_STEP_SUMMARY
+        echo "- **API**: http://${{ secrets.SSH_HOST }}:3001" >> $GITHUB_STEP_SUMMARY
+        echo "- **Health Check**: http://${{ secrets.SSH_HOST }}:3001/api/validate_token" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Deployment Info" >> $GITHUB_STEP_SUMMARY
+        echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Deployed at**: $(date -u)" >> $GITHUB_STEP_SUMMARY
