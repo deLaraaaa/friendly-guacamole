@@ -11,12 +11,12 @@ const __dirname = path.dirname(__filename);
 
 export const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization;
+  console.info(`[FTH-RL] (__filename:${new Error().stack.split('\n')[1].trim().split(':').reverse()[1]})`, authHeader);
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Unauthorized: Missing or invalid token" });
   }
 
   const token = authHeader.split(" ")[1];
-
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;

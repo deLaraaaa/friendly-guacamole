@@ -52,9 +52,10 @@ const authLimiter = rateLimit({
   message: { error: "Too many login attempts, please try again later" }
 });
 
-router.post("/api/login", authLimiter, async (req, res) => {
+router.post("/api/login", async (req, res) => {
   try {
     const result = await api.login(req.body);
+    console.info(`[FTH-RL] (__filename:${new Error().stack.split("\n")[1].trim().split(":").reverse()[1]})`, result);
     req.user = result.user;
     res.status(200).json(result);
   } catch (error) {
@@ -76,7 +77,9 @@ router.post("/api/send_reset_code", async (req, res) => {
 
 router.post("/api/reset_password", async (req, res) => {
   try {
-    const { email, resetToken, newPassword } = req.body;
+    const {
+      email, resetToken, newPassword
+    } = req.body;
     const result = await api.resetPassword(email, resetToken, newPassword);
     res.status(200).json(result);
   } catch (error) {
@@ -105,9 +108,7 @@ router.get("/api/inventory_items", authenticate, async (req, res) => {
     res.status(200).json(items);
   } catch (error) {
     console.error("Error listing inventory items:", error);
-    res.status(error.status || 500).json({
-      error: error.message || "Failed to list inventory items"
-    });
+    res.status(error.status || 500).json({ error: error.message || "Failed to list inventory items" });
   }
 });
 
@@ -128,9 +129,7 @@ router.get("/api/list_stock_entries", authenticate, async (req, res) => {
     res.status(200).json(entries);
   } catch (error) {
     console.error("Error listing stock entries:", error);
-    res.status(error.status || 500).json({
-      error: error.message || "Failed to list stock entries"
-    });
+    res.status(error.status || 500).json({ error: error.message || "Failed to list stock entries" });
   }
 });
 
@@ -151,19 +150,83 @@ router.get("/api/list_stock_exits", authenticate, async (req, res) => {
     res.status(200).json(exits);
   } catch (error) {
     console.error("Error listing stock exits:", error);
-    res.status(error.status || 500).json({
-      error: error.message || "Failed to list stock exits"
-    });
+    res.status(error.status || 500).json({ error: error.message || "Failed to list stock exits" });
   }
 });
 
 router.get("/api/validate_token", authenticate, (req, res) => {
   try {
-    const { id, username, namespace, restaurantId, role } = req.user;
-    res.json({ id, username, namespace, restaurantId, role });
+    const {
+      id, username, namespace, restaurantId, role
+    } = req.user;
+    res.json({
+      id, username, namespace, restaurantId, role
+    });
   } catch (error) {
     console.error("Error in /api/validate_token:", error);
     res.status(500).json({ error: "Failed to fetch user information" });
+  }
+});
+
+router.get("/api/users", authenticate, async (req, res) => {
+  try {
+    const users = await api.listUsers(req.user);
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("Error listing users:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to list users" });
+  }
+});
+
+router.post("/api/create_user", authenticate, async (req, res) => {
+  try {
+    const result = await api.createUser(req.user, req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    console.error("Error creating user:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to create user" });
+  }
+});
+
+router.post("/api/toggle_user_activation", authenticate, async (req, res) => {
+  try {
+    const result = await api.toggleUserActivation(req.user, req.body);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error toggling user activation:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to toggle user activation" });
+  }
+});
+
+router.post("/api/force_password_change", async (req, res) => {
+  try {
+    const result = await api.forcePasswordChange(req.body);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error forcing password change:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to force password change" });
+  }
+});
+
+router.post("/api/change_password", authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const result = await api.changePassword(req.user, currentPassword, newPassword);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to change password" });
+  }
+});
+
+router.post("/api/delete_user", authenticate, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const result = await api.deleteUser(req.user, userId);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to delete user" });
   }
 });
 

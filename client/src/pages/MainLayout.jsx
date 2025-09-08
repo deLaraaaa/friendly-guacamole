@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { UserContext } from "../contexts/UserContext";
 import {
   Drawer,
   List,
@@ -18,6 +19,7 @@ import {
   Logout as LogoutIcon,
   ExpandLess,
   ExpandMore,
+  AccountCircleOutlined,
 } from "@mui/icons-material";
 
 const drawerWidth = 240;
@@ -25,14 +27,10 @@ const drawerWidth = 240;
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setUser } = useContext(UserContext);
   const [inventoryOpen, setInventoryOpen] = useState(true);
 
   const menuItemsTop = [
-    {
-      text: "Dashboard",
-      icon: <DashboardIcon />,
-      path: "/dashboard",
-    },
     {
       text: "Inventário",
       icon: <InventoryIcon />,
@@ -48,18 +46,13 @@ export default function MainLayout() {
         },
       ],
     },
-    {
-      text: "Relatório",
-      icon: <AssessmentIcon />,
-      path: "/report",
-    },
   ];
 
   const menuItemsBottom = [
     {
-      text: "Configurações",
-      icon: <SettingsIcon />,
-      path: "/configurations",
+      text: "Usuários",
+      icon: <AccountCircleOutlined />,
+      path: "/users",
     },
     {
       text: "Sair",
@@ -67,6 +60,7 @@ export default function MainLayout() {
       action: () => {
         localStorage.removeItem("authToken");
         sessionStorage.removeItem("authToken");
+        setUser(null);
         navigate("/login");
       },
     },

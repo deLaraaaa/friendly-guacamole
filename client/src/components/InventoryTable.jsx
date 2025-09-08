@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -13,9 +13,8 @@ import {
   TablePagination,
   TableSortLabel,
 } from "@mui/material";
-import { getStockMovements } from "../services/inventoryService";
-import { UserContext } from "../contexts/UserContext";
-import { useWindowSize } from "../hooks/useWindowSize"; // Add a custom hook to get window size
+import { useWindowSize } from "../hooks/useWindowSize";
+import { CATEGORY_TRANSLATIONS } from "../constants";
 
 const columns = [
   { id: "itemName", label: "Produto" },
@@ -35,13 +34,13 @@ function descendingComparator(a, b, orderBy) {
     const aPrice = parseFloat(
       (a.price || "0")
         .toString()
-        .replace(/[^\d,.-]/g, "")
+        .replace(/[^\\d,.-]/g, "")
         .replace(",", ".")
     );
     const bPrice = parseFloat(
       (b.price || "0")
         .toString()
-        .replace(/[^\d,.-]/g, "")
+        .replace(/[^\\d,.-]/g, "")
         .replace(",", ".")
     );
     return bPrice - aPrice;
@@ -63,48 +62,21 @@ function getComparator(order, orderBy) {
 const DEFAULT_ORDER_BY = "date";
 const DEFAULT_ORDER = "desc";
 
-function InventoryTable({ filters = {}, reload }) {
-  const { user } = useContext(UserContext);
-  const [movements, setMovements] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+function InventoryTable({ movements = [], loading }) {
   const [page, setPage] = useState(0);
   const [order, setOrder] = useState(DEFAULT_ORDER);
   const [orderBy, setOrderBy] = useState(DEFAULT_ORDER_BY);
 
   const { height } = useWindowSize();
-  const rowsPerPage = React.useMemo(() => {
+  const rowsPerPage = useMemo(() => {
     if (height === 968) return 10;
     const baseRows = Math.floor((height / 968) * 10);
     return Math.max(baseRows, 5);
   }, [height]);
 
   useEffect(() => {
-    const fetchMovements = async () => {
-      setLoading(true);
-      try {
-        const data = await getStockMovements(filters);
-        const filteredData = data.filter(
-          (item) => item.itemName !== "Item not found"
-        );
-        setMovements(filteredData);
-        setError(null);
-      } catch (err) {
-        console.error("Failed to fetch stock movements:", err);
-        setError("Falha ao carregar os movimentos de estoque");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchMovements();
-    }
-  }, [user, filters, reload]);
-
-  useEffect(() => {
     setPage(0);
-  }, [filters]);
+  }, [movements]);
 
   const handleRequestSort = (property) => {
     if (orderBy !== property) {
@@ -118,13 +90,17 @@ function InventoryTable({ filters = {}, reload }) {
     }
   };
 
-  const sortedMovements = React.useMemo(() => {
+  const sortedMovements = useMemo(() => {
+    const filteredData = movements.filter(
+      (item) => item.itemName !== "Item not found"
+    );
+
     if (orderBy === "date") {
-      return [...movements].sort(
+      return [...filteredData].sort(
         (a, b) => new Date(b.rawDate) - new Date(a.rawDate)
       );
     }
-    return [...movements].sort(getComparator(order, orderBy));
+    return [...filteredData].sort(getComparator(order, orderBy));
   }, [movements, order, orderBy]);
 
   const paginatedMovements = sortedMovements.slice(
@@ -140,10 +116,6 @@ function InventoryTable({ filters = {}, reload }) {
     );
   }
 
-  if (error) {
-    return <Alert severity="error">{error}</Alert>;
-  }
-
   return (
     <TableContainer sx={{ borderRadius: 0 }} component={Paper} elevation={0}>
       <Table aria-label="movimentos de estoque">
@@ -152,7 +124,11 @@ function InventoryTable({ filters = {}, reload }) {
             {columns.map((col) => (
               <TableCell
                 key={col.id}
-                sx={{ color: "#667085", fontWeight: "bold", cursor: "pointer" }}
+                sx={{
+                  color: "#667085",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
                 sortDirection={orderBy === col.id ? order : false}
               >
                 <TableSortLabel
@@ -175,7 +151,9 @@ function InventoryTable({ filters = {}, reload }) {
                 </TableCell>
                 <TableCell>{item.price ? "R$ " + item.price : "-"}</TableCell>
                 <TableCell>{item.quantity}</TableCell>
-                <TableCell>{item.category || "-"}</TableCell>
+                <TableCell>
+                  {CATEGORY_TRANSLATIONS[item.category] || item.category || "-"}
+                </TableCell>
                 <TableCell>
                   {item.type === "Entrada"
                     ? item.expirationDate || "Não Perecível"
@@ -190,7 +168,10 @@ function InventoryTable({ filters = {}, reload }) {
                   {item.type}
                 </TableCell>
                 <TableCell
-                  sx={{ color: item.availability.color, fontWeight: "bold" }}
+                  sx={{
+                    color: item.availability.color,
+                    fontWeight: "bold",
+                  }}
                 >
                   {item.availability.status}
                 </TableCell>

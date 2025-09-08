@@ -1,15 +1,53 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Button } from "@mui/material";
 import Metrics from "../components/Metrics";
 import InventoryTable from "../components/InventoryTable";
 import InventoryFilters from "../components/InventoryFilters";
 import AddMovementModal from "../components/AddMovementModal";
-import { addStockEntry, addStockExit } from "../services/inventoryService";
+import {
+  addStockEntry,
+  addStockExit,
+  getStockMovements,
+} from "../services/inventoryService";
 
 export default function Inventory() {
   const [filters, setFilters] = useState({});
   const [modalOpen, setModalOpen] = useState(false);
   const [reload, setReload] = useState(false);
+  const [movements, setMovements] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [allItems, setAllItems] = useState([]);
+  const [allMovements, setAllMovements] = useState([]);
+
+  useEffect(() => {
+    // Buscar todos os dados ao montar o componente
+    const fetchAllData = async () => {
+      try {
+        const { movements: allMovementsData, items: allItemsData } =
+          await getStockMovements({});
+        setAllMovements(allMovementsData);
+        setAllItems(allItemsData);
+      } catch (error) {
+        console.error("Failed to fetch all inventory data:", error);
+      }
+    };
+    fetchAllData();
+  }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const { movements: movementsData } = await getStockMovements(filters);
+        setMovements(movementsData);
+      } catch (error) {
+        console.error("Failed to fetch inventory data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [filters, reload]);
 
   const handleAddMovement = async (data) => {
     try {
@@ -47,7 +85,7 @@ export default function Inventory() {
           borderRadius: "8px",
         }}
       >
-        <Metrics />
+        <Metrics items={allItems} movements={allMovements} loading={loading} />
       </div>
       <div style={{ width: "100%" }}>
         <div
@@ -69,7 +107,7 @@ export default function Inventory() {
           </Box>
         </div>
         <div>
-          <InventoryTable filters={filters} reload={reload} />
+          <InventoryTable movements={movements} loading={loading} />
         </div>
       </div>
       <AddMovementModal

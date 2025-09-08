@@ -107,9 +107,13 @@ export default {
       }
 
       const [username, namespace] = loginParts;
-      const account = await crud.readLogin(CONST.TABLES.ACCOUNT.KIND, { username, namespace });
+      const account = await crud.readLogin(CONST.TABLES.ACCOUNT.KIND, { username, namespace, deleted: false });
       if (!account) {
         throw { status: 401, message: "Invalid credentials" };
+      }
+
+      if (!account.active) {
+        throw { status: 403, message: "Account is deactivated" };
       }
 
       const passwordMatch = await bcrypt.compare(password, account.password);
@@ -129,6 +133,8 @@ export default {
         process.env.JWT_SECRET,
         { expiresIn: tokenExpiry }
       );
+
+      crud.updateLogin(CONST.TABLES.ACCOUNT.KIND, { id: account.id }, { lastLogin: new Date() });
 
       const { password: _, ...userWithoutPassword } = account;
       return { user: userWithoutPassword, token };
@@ -197,6 +203,27 @@ export default {
 
     resetTokens.delete(email);
     return { message: "Password reset successfully" };
+  },
+
+  async changePassword(user, currentPassword, newPassword) {
+    if (!currentPassword || !newPassword) {
+      throw { status: 400, message: "Current password and new password are required" };
+    }
+
+    const account = await crud.readLogin(CONST.TABLES.ACCOUNT.KIND, { id: user.id });
+    if (!account) {
+      throw { status: 404, message: "User not found" };
+    }
+
+    const passwordMatch = await bcrypt.compare(currentPassword, account.password);
+    if (!passwordMatch) {
+      throw { status: 401, message: "Current password is incorrect" };
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await crud.update(user, CONST.TABLES.ACCOUNT.KIND, { id: user.id }, { password: hashedPassword, firstLogin: false });
+
+    return { message: "Password changed successfully" };
   },
 
   async changeUserRole(user, data) {
@@ -273,19 +300,16 @@ export default {
     } = filters;
     const restaurantId = user.restaurantId;
 
-    // Se houver filtro de data, usar rawQuery
     if (dataInicio || dataFim) {
       const where = ["\"restaurantId\" = $1"];
       const params = [restaurantId];
       let paramIdx = 2;
 
-      // Adiciona outros filtros
       for (const [key, value] of Object.entries(otherFilters)) {
         where.push(`"${key}" = $${paramIdx++}`);
         params.push(value);
       }
 
-      // Filtro de intervalo de data
       if (dataInicio) {
         where.push(`"expirationDate" >= $${paramIdx}`);
         params.push(dataInicio);
@@ -303,7 +327,6 @@ export default {
       return await crud.rawQuery(user, query, params);
     }
 
-    // Caso não haja filtro de data, usa o list padrão
     const queryFilters = { ...otherFilters, restaurantId };
     return await crud.list(user, CONST.TABLES.STOCK_ENTRIES.KIND, queryFilters);
   },
@@ -353,19 +376,16 @@ export default {
     } = filters;
     const restaurantId = user.restaurantId;
 
-    // Se houver filtro de data, usar rawQuery
     if (dataInicio || dataFim) {
       const where = ["\"restaurantId\" = $1"];
       const params = [restaurantId];
       let paramIdx = 2;
 
-      // Adiciona outros filtros
       for (const [key, value] of Object.entries(otherFilters)) {
         where.push(`"${key}" = $${paramIdx++}`);
         params.push(value);
       }
 
-      // Filtro de intervalo de data
       if (dataInicio) {
         where.push(`"exitDate" >= $${paramIdx}`);
         params.push(dataInicio);
@@ -383,7 +403,6 @@ export default {
       return await crud.rawQuery(user, query, params);
     }
 
-    // Caso não haja filtro de data, usa o list padrão
     const queryFilters = { ...otherFilters, restaurantId };
     return await crud.list(user, CONST.TABLES.STOCK_EXITS.KIND, queryFilters);
   },
@@ -402,5 +421,72 @@ export default {
     return await crud.create(user, CONST.TABLES.GENERAL_REPORTS.KIND, {
       reportTitle, description, reportType, createdBy, restaurantId
     });
+  },
+
+  async listUsers(user) {
+    if (user.role !== CONST.TABLES.ACCOUNT.ROLE.ADMIN) throw { status: 403, message: "Forbidden" };
+    return await crud.list(user, CONST.TABLES.ACCOUNT.KIND, { restaurantId: user.restaurantId, deleted: false });
+  },
+
+  async createUser(user, data) {
+    if (user.role !== CONST.TABLES.ACCOUNT.ROLE.ADMIN) throw { status: 403, message: "Forbidden" };
+    const { username, email } = data;
+
+    if (!username || !email) throw { status: 400, message: "Username and email are required" };
+
+    const password = Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await crud.create(user, CONST.TABLES.ACCOUNT.KIND, {
+      username,
+      email,
+      password: hashedPassword,
+      restaurantId: user.restaurantId,
+      namespace: user.namespace,
+      role: data.role,
+      active: true,
+      firstLogin: true,
+      createdAt: new Date()
+    });
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Account Created",
+      text: `Your account has been created. Username: ${username}@${user.namespace}, Password: ${password}`
+    });
+
+    return { message: "User created and email sent" };
+  },
+
+  async toggleUserActivation(user, data) {
+    if (user.role !== CONST.TABLES.ACCOUNT.ROLE.ADMIN) throw { status: 403, message: "Forbidden" };
+    const { userId, active } = data;
+
+    if (typeof active !== "boolean") throw { status: 400, message: "Invalid active status" };
+
+    return await crud.update(user, CONST.TABLES.ACCOUNT.KIND, { id: userId, restaurantId: user.restaurantId }, { active });
+  },
+
+  async deleteUser(user, userId) {
+    if (user.role !== CONST.TABLES.ACCOUNT.ROLE.ADMIN) throw { status: 403, message: "Forbidden" };
+
+    return await crud.update(user, CONST.TABLES.ACCOUNT.KIND, { id: userId, restaurantId: user.restaurantId }, { deleted: true, active: false });
+  },
+
+  async forcePasswordChange(data) {
+    const { userId, newPassword } = data;
+
+    if (!userId || !newPassword) throw { status: 400, message: "UserId and newPassword are required" };
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await crud.update(null, CONST.TABLES.ACCOUNT.KIND, { id: userId }, { password: hashedPassword, firstLogin: false });
+
+    return { message: "Password updated successfully" };
   }
 };

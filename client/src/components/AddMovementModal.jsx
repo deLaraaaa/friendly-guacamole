@@ -8,10 +8,10 @@ import {
   TextField,
   MenuItem,
   Autocomplete,
-  CircularProgress,
 } from "@mui/material";
 import { getInventoryItems } from "../services/inventoryService";
 import { UserContext } from "../contexts/UserContext";
+import { CATEGORY_TRANSLATIONS } from "../constants";
 
 const MOVEMENT_TYPES = [
   { label: "Entrada", value: "Entrada" },
@@ -20,17 +20,23 @@ const MOVEMENT_TYPES = [
 
 const today = new Date().toISOString().split("T")[0];
 
-export default function AddMovementModal({ open, onClose, onSubmit }) {
+export default function AddMovementModal({
+  open,
+  onClose,
+  onSubmit,
+  prefilledData = {},
+  disableFields = [],
+}) {
   const { user } = useContext(UserContext);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    product: null,
-    type: "",
+    product: prefilledData.product || null,
+    type: prefilledData.type || "",
     quantity: "",
     price: "",
     exitDate: today,
-    expirationDate: today,
+    expirationDate: "",
   });
 
   useEffect(() => {
@@ -41,6 +47,15 @@ export default function AddMovementModal({ open, onClose, onSubmit }) {
         .finally(() => setLoading(false));
     }
   }, [open, user]);
+
+  useEffect(() => {
+    if (open) {
+      setForm((prev) => ({
+        ...prev,
+        ...prefilledData,
+      }));
+    }
+  }, [open, prefilledData]);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -68,7 +83,7 @@ export default function AddMovementModal({ open, onClose, onSubmit }) {
         quantity: "",
         price: "",
         expirationDate: "",
-        exitDate: "",
+        exitDate: today,
       });
     }
   };
@@ -86,19 +101,42 @@ export default function AddMovementModal({ open, onClose, onSubmit }) {
       >
         <Autocomplete
           options={products}
-          getOptionLabel={(option) => option.name || ""}
-          loading={loading}
+          getOptionLabel={(option) => option.name}
           value={form.product}
-          onChange={(_, value) => handleChange("product", value)}
+          onChange={(_, value) => {
+            handleChange("product", value);
+            handleChange("category", value ? value.category : "");
+          }}
           renderInput={(params) => (
-            <TextField {...params} label="Nome do Produto" required />
+            <TextField
+              sx={{ marginTop: "10px" }}
+              {...params}
+              label="Nome do Produto"
+              required
+            />
           )}
+          disabled={disableFields.includes("product")}
+        />
+        <Autocomplete
+          options={products
+            .map((p) => p.category)
+            .filter((v, i, a) => v && a.indexOf(v) === i)}
+          getOptionLabel={(option) => CATEGORY_TRANSLATIONS[option] || option}
+          value={form.product ? form.product.category : form.category || ""}
+          onChange={(_, value) => {
+            handleChange("category", value || "");
+          }}
+          renderInput={(params) => (
+            <TextField {...params} label="Categoria" required />
+          )}
+          disabled={disableFields.includes("category")}
         />
         <TextField
           select
           label="Tipo"
           value={form.type}
           onChange={(e) => handleChange("type", e.target.value)}
+          disabled={disableFields.includes("type")}
           required
         >
           {MOVEMENT_TYPES.map((opt) => (
@@ -114,7 +152,7 @@ export default function AddMovementModal({ open, onClose, onSubmit }) {
           onChange={(e) => handleChange("quantity", e.target.value)}
           required
         />
-        {form.type === "Entrada" && (
+        {form.type === "Entrada" && !disableFields.includes("price") && (
           <>
             <TextField
               label="Preço de Compra"
@@ -129,11 +167,10 @@ export default function AddMovementModal({ open, onClose, onSubmit }) {
               value={form.expirationDate}
               onChange={(e) => handleChange("expirationDate", e.target.value)}
               InputLabelProps={{ shrink: true }}
-              required
             />
           </>
         )}
-        {form.type === "Saída" && (
+        {form.type === "Saída" && !disableFields.includes("exitDate") && (
           <TextField
             label="Data de Saída"
             type="date"

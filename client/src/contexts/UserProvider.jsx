@@ -8,16 +8,34 @@ export function UserProvider({ children }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    getCurrentUser()
-      .then((userData) => {
+    const validateToken = async () => {
+      const token =
+        localStorage.getItem("authToken") ||
+        sessionStorage.getItem("authToken");
+
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const userData = await getCurrentUser();
         setUser(userData);
-        setLoading(false);
-      })
-      .catch(() => {
+        setError(null);
+      } catch (err) {
+        console.error("Token validation failed:", err);
+        // Limpar tokens inválidos
+        localStorage.removeItem("authToken");
+        sessionStorage.removeItem("authToken");
+        setUser(null);
         setError("Sessão inválida ou expirada.");
+      } finally {
         setLoading(false);
-      });
-  }, []);
+      }
+    };
+
+    validateToken();
+  }, []); // Removida a dependência [user] para evitar loops
 
   return (
     <UserContext.Provider value={{ user, setUser, loading, error }}>

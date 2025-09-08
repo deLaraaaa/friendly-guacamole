@@ -1,4 +1,3 @@
-// client/src/services/inventoryService.js
 import { apiRequest } from "./apiClient";
 
 /**
@@ -91,7 +90,6 @@ export async function addInventoryItem(itemData) {
  * Combines and formats stock entries and exits for display
  * @returns {Promise<Array>} - Combined list of stock movements
  */
-// In inventoryService.js
 export async function getStockMovements(filters = {}) {
   try {
     const entryFilters = {};
@@ -109,19 +107,16 @@ export async function getStockMovements(filters = {}) {
       exitFilters.dataFim = filters.dataFim;
     }
 
-    // Status: Entrada/Saída
     let fetchEntries = true, fetchExits = true;
     if (filters.status === "Entrada") fetchExits = false;
     if (filters.status === "Saída") fetchEntries = false;
 
-    // Buscar dados do backend
     const [entries, exits, inventoryItems] = await Promise.all([
       fetchEntries ? getStockEntries(entryFilters) : Promise.resolve([]),
       fetchExits ? getStockExits(exitFilters) : Promise.resolve([]),
       getInventoryItems(itemFilters)
     ]);
 
-    // Mapear itens para status de disponibilidade
     const itemMap = {};
     inventoryItems.forEach(item => {
       const quantity = item.quantity || 0;
@@ -144,10 +139,8 @@ export async function getStockMovements(filters = {}) {
       };
     });
 
-    // Formatar entradas
     const formattedEntries = entries.map(entry => {
       const availability = itemMap[entry.itemId]?.availability || { status: "Desconhecido", color: "text.secondary" };
-      // Filtro de disponibilidade
       if (filters.disponibilidade && filters.disponibilidade !== availability.status) return null;
       return {
         id: entry.id,
@@ -165,30 +158,45 @@ export async function getStockMovements(filters = {}) {
       };
     }).filter(Boolean);
 
-    // Formatar saídas
-    const formattedExits = exits.map(exit => {
-      const availability = itemMap[exit.itemId]?.availability || { status: "Desconhecido", color: "text.secondary" };
-      // Filtro de disponibilidade
-      if (filters.disponibilidade && filters.disponibilidade !== availability.status) return null;
-      return {
-        id: exit.id,
-        itemId: exit.itemId,
-        itemName: itemMap[exit.itemId]?.name || "Item not found",
-        quantity: exit.quantity,
-        date: new Date(exit.entryDate || Date.now()).toLocaleDateString("pt-BR"),
-        category: itemMap[exit.itemId]?.category || "-",
-        destination: exit.destination || "-",
-        exitType: exit.exitType || "-",
-        availability,
-        type: "Saída",
-        movementDate: exit.exitDate ? new Date(exit.exitDate).getTime() : Date.now(),
-        rawDate: exit.entryDate ? new Date(exit.entryDate) : new Date(),
-      };
-    }).filter(Boolean);
+    const formattedExits = exits
+      .map((exit) => {
+        const availability =
+          itemMap[exit.itemId]?.availability || { status: "Desconhecido", color: "text.secondary" };
+        if (
+          filters.disponibilidade &&
+          filters.disponibilidade !== availability.status
+        ) {
+          return null;
+        }
+        return {
+          id: exit.id,
+          itemId: exit.itemId,
+          itemName: itemMap[exit.itemId]?.name || "Item not found",
+          quantity: exit.quantity,
+          date: new Date(exit.entryDate || Date.now()).toLocaleDateString(
+            "pt-BR"
+          ),
+          category: itemMap[exit.itemId]?.category || "-",
+          destination: exit.destination || "-",
+          exitType: exit.exitType || "-",
+          availability,
+          type: "Saída",
+          movementDate: exit.exitDate ?
+            new Date(exit.exitDate).getTime() :
+            Date.now(),
+          rawDate: exit.entryDate ? new Date(exit.entryDate) : new Date(),
+        };
+      })
+      .filter(Boolean);
 
-    // Unir e ordenar
-    return [...formattedEntries, ...formattedExits]
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    const movements = [...formattedEntries, ...formattedExits].sort(
+      (a, b) => new Date(b.date) - new Date(a.date)
+    );
+
+    return {
+      movements,
+      items: inventoryItems
+    };
   } catch (error) {
     console.error("Error fetching stock movements:", error);
     throw error;

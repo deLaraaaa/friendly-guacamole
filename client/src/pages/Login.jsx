@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../services/accessService";
+import userService from "../services/userService";
+import { UserContext } from "../contexts/UserContext";
 import {
   Button,
   TextField,
@@ -11,17 +13,32 @@ import {
   InputAdornment,
   Checkbox,
   FormControlLabel,
+  Box,
+  CircularProgress,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
 
 function Login() {
-  const [loginData, setLoginData] = useState({ login: "", password: "" });
+  const { user, setUser, loading: userLoading } = useContext(UserContext);
+  const navigate = useNavigate();
+  const [loginData, setLoginData] = useState({
+    login: "",
+    password: "",
+    newPassword: "",
+  });
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const [firstLogin, setFirstLogin] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  useEffect(() => {
+    if (!userLoading && user) {
+      navigate("/inventory", { replace: true });
+    }
+  }, [user, userLoading, navigate]);
 
   const handleOpenModal = () => setModalOpen(true);
   const handleCloseModal = () => setModalOpen(false);
@@ -35,22 +52,60 @@ function Login() {
     setShowPassword((prev) => !prev);
   };
 
+  const toggleNewPasswordVisibility = () => {
+    setShowNewPassword((prev) => !prev);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const response = await login(loginData.login, loginData.password);
 
-      if (rememberMe) {
-        localStorage.setItem("authToken", response.token);
-      } else {
-        sessionStorage.setItem("authToken", response.token);
+      if (response.user.firstLogin) {
+        setFirstLogin(true);
+        if (loginData.newPassword) {
+          await userService.changePassword({
+            currentPassword: loginData.password,
+            newPassword: loginData.newPassword,
+            token: response.token,
+          });
+          setLoginData((prev) => ({
+            ...prev,
+            password: loginData.newPassword,
+            newPassword: "",
+          }));
+          setFirstLogin(false);
+        }
+        return;
       }
 
-      navigate("/dashboard");
+      const token = response.token;
+      if (rememberMe) {
+        localStorage.setItem("authToken", token);
+      } else {
+        sessionStorage.setItem("authToken", token);
+      }
+      console.log(response.user);
+      setUser(response.user);
     } catch (err) {
-      setError("Invalid login credentials");
+      setError(err.response?.data?.error || "Invalid login credentials");
     }
   };
+
+  if (userLoading) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <div style={{ display: "flex" }}>
@@ -83,7 +138,7 @@ function Login() {
             width: "30vw",
           }}
         >
-          <p style={{ fontSize: "2.9vw", fontWeigth: 600 }}>
+          <p style={{ fontSize: "2.9vw", fontWeight: 600 }}>
             Faça login na sua conta
           </p>
           <TextField
@@ -109,18 +164,40 @@ function Login() {
             value={loginData.password}
             onChange={handleChange}
             sx={{ width: "30vw" }}
-            slotProps={{
-              input: {
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={togglePasswordVisibility} edge="end">
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          {firstLogin && (
+            <TextField
+              margin="normal"
+              name="newPassword"
+              label="Nova Senha"
+              type={showNewPassword ? "text" : "password"}
+              id="newPassword"
+              value={loginData.newPassword}
+              onChange={handleChange}
+              sx={{ width: "30vw" }}
+              InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton onClick={togglePasswordVisibility} edge="end">
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    <IconButton
+                      onClick={toggleNewPasswordVisibility}
+                      edge="end"
+                    >
+                      {showNewPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
                 ),
-              },
-            }}
-          />
+              }}
+            />
+          )}
           {error && (
             <Alert severity="error" sx={{ mt: 2 }}>
               {error}

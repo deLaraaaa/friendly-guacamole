@@ -31,7 +31,11 @@ export default function InventoryFilters({ onChange }) {
   const handleChange = (field, value) => {
     const newFilters = { ...filters, [field]: value };
     setFilters(newFilters);
-    if (onChange) onChange(newFilters);
+  };
+
+  const handleApplyFilters = () => {
+    if (onChange) onChange(filters);
+    handleFilterClose();
   };
 
   return (
@@ -126,7 +130,7 @@ export default function InventoryFilters({ onChange }) {
           >
             <Button onClick={handleFilterClose}>Cancelar</Button>
             <Button
-              onClick={handleFilterClose}
+              onClick={handleApplyFilters}
               variant="contained"
               color="primary"
             >

@@ -13,7 +13,7 @@ if (!API_BASE_URL) {
 export async function apiRequest(endpoint, options = {}) {
   const defaultHeaders = { "Content-Type": "application/json" };
 
-  const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
   if (token) {
     defaultHeaders["Authorization"] = `Bearer ${token}`;
   }
@@ -43,8 +43,9 @@ export async function apiRequest(endpoint, options = {}) {
 async function handleErrorResponse(response) {
   const errorMessage = await extractErrorMessage(response);
   if (response.status === 401) {
-    console.error("Unauthorized – limpando token e forçando logout");
+    console.error("Unauthorized – limpando token");
     localStorage.removeItem("authToken");
+    sessionStorage.removeItem("authToken");
   }
   throw new Error(errorMessage);
 }

@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { addInventoryItem, addStockEntry } from "../services/inventoryService";
 import Autocomplete from "@mui/material/Autocomplete";
+import { CATEGORY_TRANSLATIONS } from "../constants";
 
 const CATEGORIES = [
   "Vegetable",
@@ -51,7 +52,6 @@ export default function AddProductModal({ open, onClose, onSuccess }) {
         expirationDate: form.expirationDate || undefined,
       });
 
-      // 2. Create Stock Entry for this item with the actual quantity
       await addStockEntry({
         itemId: item.id,
         quantity: Number(form.quantity),
@@ -86,7 +86,14 @@ export default function AddProductModal({ open, onClose, onSuccess }) {
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>Adicionar Produto</DialogTitle>
       <DialogContent>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            mt: 1,
+          }}
+        >
           <TextField
             label="Nome"
             value={form.name}
@@ -95,9 +102,28 @@ export default function AddProductModal({ open, onClose, onSuccess }) {
             fullWidth
           />
           <Autocomplete
-            options={CATEGORIES}
-            value={form.category}
-            onChange={(_, value) => handleChange("category", value || "")}
+            options={CATEGORIES.map((category) => ({
+              label: CATEGORY_TRANSLATIONS[category] || category,
+              value: category,
+            }))}
+            value={
+              form.category
+                ? {
+                    label:
+                      CATEGORY_TRANSLATIONS[form.category] || form.category,
+                    value: form.category,
+                  }
+                : null
+            }
+            onChange={(_, option) =>
+              handleChange("category", option?.value || "")
+            }
+            getOptionLabel={(option) =>
+              typeof option === "string" ? option : option.label
+            }
+            isOptionEqualToValue={(option, value) =>
+              option.value === value.value
+            }
             renderInput={(params) => (
               <TextField {...params} label="Categoria" required fullWidth />
             )}

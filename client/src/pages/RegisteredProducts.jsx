@@ -1,24 +1,45 @@
 import React, { useEffect, useState } from "react";
-import { Box, Typography, Grid, Button } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Grid,
+  Button,
+  Autocomplete,
+  TextField,
+} from "@mui/material";
 import { getInventoryItems } from "../services/inventoryService";
 import ProductCard from "../components/ProductCard";
 import AddProductModal from "../components/AddProductModal";
 
 export default function RegisteredProducts() {
-  const [inventoryItems, setInventoryItems] = useState([]);
+  const [allItems, setAllItems] = useState([]);
+  const [filteredItems, setFilteredItems] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
+
   const handleOpenModal = () => setModalOpen(true);
   const handleCloseModal = () => setModalOpen(false);
-  const handleProductAdded = () => {
-    getInventoryItems().then(setInventoryItems);
-  };
 
-  useEffect(() => {
+  const fetchInventoryItems = () => {
     getInventoryItems()
-      .then((data) => setInventoryItems(data))
+      .then((data) => {
+        setAllItems(data);
+        setFilteredItems(data);
+      })
       .catch((error) =>
         console.error("Error fetching inventory items:", error)
       );
+  };
+
+  const handleProductAdded = () => {
+    fetchInventoryItems();
+  };
+
+  const handleUpdate = () => {
+    fetchInventoryItems();
+  };
+
+  useEffect(() => {
+    fetchInventoryItems();
   }, []);
 
   return (
@@ -39,7 +60,6 @@ export default function RegisteredProducts() {
         Aqui você verá a lista de todos os produtos cadastrados.
       </Typography>
 
-      {/* White panel */}
       <Box
         sx={{
           flex: 1,
@@ -52,35 +72,67 @@ export default function RegisteredProducts() {
           minHeight: 0,
         }}
       >
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 2,
+          }}
+        >
+          <Autocomplete
+            options={allItems}
+            getOptionLabel={(option) => option.name}
+            style={{ width: 300 }}
+            onChange={(event, newValue) => {
+              if (newValue) {
+                setFilteredItems([newValue]);
+              } else {
+                setFilteredItems(allItems);
+              }
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Buscar Produto"
+                variant="outlined"
+              />
+            )}
+          />
           <Button variant="contained" color="primary" onClick={handleOpenModal}>
             Adicionar Produto
           </Button>
-          <AddProductModal
-            open={modalOpen}
-            onClose={handleCloseModal}
-            onSuccess={handleProductAdded}
-          />
         </Box>
+        <AddProductModal
+          open={modalOpen}
+          onClose={handleCloseModal}
+          onSuccess={handleProductAdded}
+        />
 
-        {/* Only *this* area ever scrolls, and only vertically */}
         <Box
           sx={{
             flex: 1,
             overflowY: "auto",
             overflowX: "hidden",
-            // optional: add a tiny right padding so cards don't butt up against hidden scrollbar
             pr: 1,
           }}
         >
           <Grid container spacing={3}>
-            {inventoryItems.map((item) => (
-              <Grid item xs={12} sm={6} md={4} key={item.id}>
+            {filteredItems.map((item) => (
+              <Grid
+                item
+                xs={12}
+                sm={6}
+                md={4}
+                key={item.id}
+                sx={{ padding: "5px" }}
+              >
                 <ProductCard
                   name={item.name}
                   category={item.category}
                   productId={item.id}
                   count={item.quantity}
+                  onUpdate={handleUpdate}
                 />
               </Grid>
             ))}
