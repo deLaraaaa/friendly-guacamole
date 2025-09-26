@@ -14,9 +14,17 @@ import { UserContext } from "../contexts/UserContext";
 import { CATEGORY_TRANSLATIONS } from "../constants";
 
 const MOVEMENT_TYPES = [
-  { label: "Entrada", value: "Entrada" },
-  { label: "Saída", value: "Saída" },
+  { label: "Entrada", value: "IN" },
+  { label: "Saída", value: "OUT" },
 ];
+
+const getMovementValue = (type) => {
+  if (!type) return "";
+  const movementType = MOVEMENT_TYPES.find(
+    (mt) => mt.label === type || mt.value === type
+  );
+  return movementType ? movementType.value : type;
+};
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -29,22 +37,19 @@ export default function AddMovementModal({
 }) {
   const { user } = useContext(UserContext);
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     product: prefilledData.product || null,
     type: prefilledData.type || "",
     quantity: "",
     price: "",
-    exitDate: today,
-    expirationDate: "",
+    offDate: today,
+    destination: "KITCHEN",
+    invoiceUrl: "",
   });
 
   useEffect(() => {
     if (open && user) {
-      setLoading(true);
-      getInventoryItems()
-        .then(setProducts)
-        .finally(() => setLoading(false));
+      getInventoryItems().then(setProducts).catch(console.error);
     }
   }, [open, user]);
 
@@ -53,9 +58,10 @@ export default function AddMovementModal({
       setForm((prev) => ({
         ...prev,
         ...prefilledData,
+        type: getMovementValue(prefilledData.type), // Convert label to value
       }));
     }
-  }, [open, prefilledData]);
+  }, [open]); // Remove prefilledData from dependencies
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -64,17 +70,21 @@ export default function AddMovementModal({
   const handleSubmit = () => {
     if (form.product && form.type && form.quantity) {
       const payload = {
-        product: form.product,
+        itemId: form.product.id,
         type: form.type,
-        quantity: form.quantity,
+        quantity: parseInt(form.quantity),
+        offDate: form.offDate,
       };
-      if (form.type === "Entrada") {
-        payload.price = parseFloat(form.price);
-        payload.expirationDate = form.expirationDate;
+
+      if (form.type === "IN") {
+        if (form.price) payload.price = parseFloat(form.price);
+        if (form.invoiceUrl) payload.invoiceUrl = form.invoiceUrl;
       }
-      if (form.type === "Saída") {
-        payload.exitDate = form.exitDate;
+
+      if (form.type === "OUT") {
+        payload.destination = form.destination;
       }
+
       onSubmit(payload);
       onClose();
       setForm({
@@ -82,8 +92,9 @@ export default function AddMovementModal({
         type: "",
         quantity: "",
         price: "",
-        expirationDate: "",
-        exitDate: today,
+        offDate: today,
+        destination: "KITCHEN",
+        invoiceUrl: "",
       });
     }
   };
@@ -117,6 +128,7 @@ export default function AddMovementModal({
           )}
           disabled={disableFields.includes("product")}
         />
+
         <Autocomplete
           options={products
             .map((p) => p.category)
@@ -131,6 +143,7 @@ export default function AddMovementModal({
           )}
           disabled={disableFields.includes("category")}
         />
+
         <TextField
           select
           label="Tipo"
@@ -145,6 +158,7 @@ export default function AddMovementModal({
             </MenuItem>
           ))}
         </TextField>
+
         <TextField
           label="Quantidade"
           type="number"
@@ -152,34 +166,47 @@ export default function AddMovementModal({
           onChange={(e) => handleChange("quantity", e.target.value)}
           required
         />
-        {form.type === "Entrada" && !disableFields.includes("price") && (
+
+        {form.type === "IN" && (
           <>
             <TextField
               label="Preço de Compra"
               type="number"
+              step="0.01"
               value={form.price}
               onChange={(e) => handleChange("price", e.target.value)}
-              required
             />
             <TextField
-              label="Data de Validade"
-              type="date"
-              value={form.expirationDate}
-              onChange={(e) => handleChange("expirationDate", e.target.value)}
-              InputLabelProps={{ shrink: true }}
+              label="URL da Nota Fiscal"
+              type="url"
+              value={form.invoiceUrl}
+              onChange={(e) => handleChange("invoiceUrl", e.target.value)}
             />
           </>
         )}
-        {form.type === "Saída" && !disableFields.includes("exitDate") && (
+
+        {form.type === "OUT" && (
           <TextField
-            label="Data de Saída"
-            type="date"
-            value={form.exitDate}
-            onChange={(e) => handleChange("exitDate", e.target.value)}
-            InputLabelProps={{ shrink: true }}
+            select
+            label="Destino"
+            value={form.destination}
+            onChange={(e) => handleChange("destination", e.target.value)}
             required
-          />
+          >
+            <MenuItem value="KITCHEN">Cozinha</MenuItem>
+            <MenuItem value="DELIVERY">Entrega</MenuItem>
+            <MenuItem value="WASTE">Descarte</MenuItem>
+            <MenuItem value="OTHER">Outro</MenuItem>
+          </TextField>
         )}
+        <TextField
+          label={form.type === "IN" ? "Data de Validade" : "Data de Saída"}
+          type="date"
+          value={form.offDate}
+          onChange={(e) => handleChange("offDate", e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          required
+        />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancelar</Button>

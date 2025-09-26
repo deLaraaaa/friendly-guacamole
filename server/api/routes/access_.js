@@ -154,6 +154,27 @@ router.get("/api/list_stock_exits", authenticate, async (req, res) => {
   }
 });
 
+router.post("/api/movement", authenticate, async (req, res) => {
+  try {
+    const result = await api.addMovement(req.user, req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    console.error("Error adding movement:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to add movement" });
+  }
+});
+
+router.get("/api/movements", authenticate, async (req, res) => {
+  try {
+    const filters = req.query;
+    const movements = await api.listMovements(req.user, filters);
+    res.status(200).json(movements);
+  } catch (error) {
+    console.error("Error listing movements:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to list movements" });
+  }
+});
+
 router.get("/api/validate_token", authenticate, (req, res) => {
   try {
     const {

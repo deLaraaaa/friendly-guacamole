@@ -99,6 +99,31 @@ const CONST = {
         WASTE: "WASTE",
       }
     },
+    MOVEMENT: {
+      KIND: "Movement",
+      COLUMNS: {
+        id: "id",
+        itemId: "itemId",
+        restaurantId: "restaurantId",
+        type: "type",
+        quantity: "quantity",
+        invoiceUrl: "invoiceUrl",
+        entryDate: "entryDate",
+        price: "price",
+        offDate: "offDate",
+        destination: "destination"
+      },
+      TYPES: {
+        IN: "IN",
+        OUT: "OUT"
+      },
+      DESTINATIONS: {
+        KITCHEN: "KITCHEN",
+        DELIVERY: "DELIVERY",
+        WASTE: "WASTE",
+        OTHER: "OTHER"
+      }
+    },
   },
 
   ERRORS: {

@@ -25,7 +25,7 @@ export default function Metrics({ items = [], movements = [], loading }) {
 
   useEffect(() => {
     if (items.length > 0 || movements.length > 0) {
-      const exits = movements.filter((m) => m.type === "Saída");
+      const exits = movements.filter((m) => m.type === "OUT");
       const totalProducts = items.length;
       const lowStockItems = items.filter(
         (item) => item.quantity > 0 && item.quantity <= 10
