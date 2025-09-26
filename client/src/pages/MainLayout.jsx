@@ -21,6 +21,7 @@ import {
   ExpandMore,
   AccountCircleOutlined,
 } from "@mui/icons-material";
+import logo from "../assets/logo.svg";
 
 const drawerWidth = 240;
 
@@ -85,7 +86,7 @@ export default function MainLayout() {
         {/* Logo no topo */}
         <Box sx={{ p: 2, textAlign: "center" }}>
           <img
-            src="client/src/assets/logo.svg"
+            src={logo}
             alt="Logo"
             style={{ maxWidth: "100%", height: "auto" }}
           />

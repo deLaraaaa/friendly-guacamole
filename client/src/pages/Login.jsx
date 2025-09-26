@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
+import logo from "../assets/logo.svg";
 
 function Login() {
   const { user, setUser, loading: userLoading } = useContext(UserContext);
@@ -108,7 +109,7 @@ function Login() {
   }
 
   return (
-    <div style={{ display: "flex" }}>
+    <div style={{ display: "flex", height: "80vh" }}>
       <div
         style={{
           display: "flex",
@@ -118,7 +119,7 @@ function Login() {
           width: "50vw",
         }}
       >
-        <img style={{ width: "70%" }} src="client/src/assets/logo.svg" />
+        <img style={{ width: "70%" }} src={logo} alt="Logo" />
       </div>
       <div
         style={{
