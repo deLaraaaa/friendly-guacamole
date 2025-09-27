@@ -4,11 +4,7 @@ import Metrics from "../components/Metrics";
 import InventoryTable from "../components/InventoryTable";
 import InventoryFilters from "../components/InventoryFilters";
 import AddMovementModal from "../components/AddMovementModal";
-import {
-  addStockEntry,
-  addStockExit,
-  getStockMovements,
-} from "../services/inventoryService";
+import { addMovement, getStockMovements } from "../services/inventoryService";
 
 export default function Inventory() {
   const [filters, setFilters] = useState({});
@@ -51,23 +47,7 @@ export default function Inventory() {
 
   const handleAddMovement = async (data) => {
     try {
-      if (data.type === "Entrada") {
-        await addStockEntry({
-          itemId: data.product.id,
-          quantity: Number(data.quantity),
-          expirationDate: data.expirationDate || undefined,
-          price: data.price || undefined,
-        });
-      } else if (data.type === "Saída") {
-        await addStockExit({
-          itemId: data.product.id,
-          quantity: Number(data.quantity),
-          destination: "KITCHEN",
-          exitType: "USAGE",
-          exitDate:
-            data.expirationDate || new Date().toISOString().slice(0, 10),
-        });
-      }
+      await addMovement(data);
       setModalOpen(false);
       setReload((r) => !r);
     } catch (err) {

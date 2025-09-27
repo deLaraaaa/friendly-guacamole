@@ -488,5 +488,93 @@ export default {
     await crud.update(null, CONST.TABLES.ACCOUNT.KIND, { id: userId }, { password: hashedPassword, firstLogin: false });
 
     return { message: "Password updated successfully" };
+  },
+
+  async addMovement(user, data) {
+    const {
+      itemId, type, quantity, invoiceUrl, price, offDate, destination
+    } = data;
+    const restaurantId = user.restaurantId;
+
+    if (!itemId || !type || !quantity || !restaurantId) {
+      throw { status: 400, ...CONST.ERRORS.ERR_2000 };
+    }
+
+    const inventoryItem = await crud.read(user, CONST.TABLES.INVENTORY_ITEMS.KIND, { id: itemId, restaurantId });
+    if (!inventoryItem) throw { status: 404, ...CONST.ERRORS.ERR_2008 };
+
+    let updatedQuantity;
+    if (type === CONST.TABLES.MOVEMENT.TYPES.IN) {
+      updatedQuantity = inventoryItem.quantity + quantity;
+    } else if (type === CONST.TABLES.MOVEMENT.TYPES.OUT) {
+      updatedQuantity = inventoryItem.quantity - quantity;
+      if (updatedQuantity < 0) {
+        throw { status: 400, ...CONST.ERRORS.ERR_2003 };
+      }
+    }
+
+    await crud.update(user, CONST.TABLES.INVENTORY_ITEMS.KIND, { id: itemId }, { quantity: updatedQuantity });
+
+    const movementData = {
+      itemId,
+      restaurantId,
+      type,
+      quantity,
+      entryDate: new Date(),
+      offDate: offDate || new Date().toISOString().split('T')[0]
+    };
+
+    if (type === CONST.TABLES.MOVEMENT.TYPES.IN) {
+      if (price) movementData.price = price;
+      if (invoiceUrl) movementData.invoiceUrl = invoiceUrl;
+    } else if (type === CONST.TABLES.MOVEMENT.TYPES.OUT) {
+      if (destination) movementData.destination = destination;
+    }
+
+    return await crud.create(user, CONST.TABLES.MOVEMENT.KIND, movementData);
+  },
+
+  async listMovements(user, filters = {}) {
+    if (!user) throw { status: 401, message: "Unauthorized" };
+
+    const {
+      dataInicio, dataFim, type, ...otherFilters
+    } = filters;
+    const restaurantId = user.restaurantId;
+
+    if (dataInicio || dataFim || type) {
+      const where = ["\"restaurantId\" = $1"];
+      const params = [restaurantId];
+      let paramIdx = 2;
+
+      for (const [key, value] of Object.entries(otherFilters)) {
+        where.push(`"${key}" = $${paramIdx++}`);
+        params.push(value);
+      }
+
+      if (type) {
+        where.push(`"type" = $${paramIdx++}`);
+        params.push(type);
+      }
+
+      if (dataInicio) {
+        where.push(`"entryDate" >= $${paramIdx++}`);
+        params.push(dataInicio);
+      }
+      if (dataFim) {
+        where.push(`"entryDate" <= $${paramIdx++}`);
+        params.push(dataFim);
+      }
+
+      const query = `
+        SELECT * FROM "Movement"
+        WHERE ${where.join(" AND ")}
+        ORDER BY "entryDate" DESC
+      `;
+      return await crud.rawQuery(user, query, params);
+    }
+
+    const queryFilters = { ...otherFilters, restaurantId };
+    return await crud.list(user, CONST.TABLES.MOVEMENT.KIND, queryFilters);
   }
 };

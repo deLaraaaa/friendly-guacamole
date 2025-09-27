@@ -87,33 +87,54 @@ export async function addInventoryItem(itemData) {
 }
 
 /**
- * Combines and formats stock entries and exits for display
- * @returns {Promise<Array>} - Combined list of stock movements
+ * Adds a new movement (replaces addStockEntry and addStockExit)
+ * @param {Object} movementData - The movement data
+ * @param {number} movementData.itemId - ID of the inventory item
+ * @param {string} movementData.type - Type of movement ("IN" or "OUT")
+ * @param {number} movementData.quantity - Quantity
+ * @param {number} [movementData.price] - Price (for entries)
+ * @param {string} [movementData.invoiceUrl] - Invoice URL (for entries)
+ * @param {string} [movementData.destination] - Destination (for exits)
+ * @param {string} [movementData.offDate] - Off date
+ * @returns {Promise<Object>} - The created movement
+ */
+export async function addMovement(movementData) {
+  const endpoint = "/movement";
+  return await apiRequest(endpoint, {
+    method: "POST",
+    body: JSON.stringify(movementData),
+  });
+}
+
+/**
+ * Gets movements from the new unified table
+ * @param {Object} filters - Optional filters to apply
+ * @returns {Promise<Array>} - List of movements
+ */
+export async function getMovements(filters = {}) {
+  const queryString = new URLSearchParams(filters).toString();
+  const endpoint = `/movements${queryString ? `?${queryString}` : ""}`;
+  return await apiRequest(endpoint, { method: "GET" });
+}
+
+/**
+ * Enhanced getStockMovements that uses the new Movement table
+ * @param {Object} filters - Optional filters to apply
+ * @returns {Promise<Object>} - Object containing movements and items
  */
 export async function getStockMovements(filters = {}) {
   try {
-    const entryFilters = {};
-    const exitFilters = {};
+    const movementFilters = {};
     const itemFilters = {};
 
     if (filters.produto) itemFilters.name = filters.produto;
     if (filters.categoria) itemFilters.category = filters.categoria;
-    if (filters.dataInicio) {
-      entryFilters.dataInicio = filters.dataInicio;
-      exitFilters.dataInicio = filters.dataInicio;
-    }
-    if (filters.dataFim) {
-      entryFilters.dataFim = filters.dataFim;
-      exitFilters.dataFim = filters.dataFim;
-    }
+    if (filters.dataInicio) movementFilters.dataInicio = filters.dataInicio;
+    if (filters.dataFim) movementFilters.dataFim = filters.dataFim;
+    if (filters.status) movementFilters.type = filters.status;
 
-    let fetchEntries = true, fetchExits = true;
-    if (filters.status === "Entrada") fetchExits = false;
-    if (filters.status === "Saída") fetchEntries = false;
-
-    const [entries, exits, inventoryItems] = await Promise.all([
-      fetchEntries ? getStockEntries(entryFilters) : Promise.resolve([]),
-      fetchExits ? getStockExits(exitFilters) : Promise.resolve([]),
+    const [movements, inventoryItems] = await Promise.all([
+      getMovements(movementFilters),
       getInventoryItems(itemFilters)
     ]);
 
@@ -139,68 +160,68 @@ export async function getStockMovements(filters = {}) {
       };
     });
 
-    const formattedEntries = entries.map(entry => {
-      const availability = itemMap[entry.itemId]?.availability || { status: "Desconhecido", color: "text.secondary" };
-      if (filters.disponibilidade && filters.disponibilidade !== availability.status) return null;
+    const formattedMovements = movements.map(movement => {
+      const availability = itemMap[movement.itemId]?.availability || {
+        status: "Desconhecido",
+        color: "text.secondary"
+      };
+
+      if (filters.disponibilidade && filters.disponibilidade !== availability.status) {
+        return null;
+      }
+
       return {
-        id: entry.id,
-        itemId: entry.itemId,
-        itemName: itemMap[entry.itemId]?.name || "Item not found",
-        price: entry.price || "-",
-        quantity: entry.quantity,
-        date: new Date(entry.entryDate || Date.now()).toLocaleDateString("pt-BR"),
-        category: itemMap[entry.itemId]?.category || entry.category || "-",
-        expirationDate: entry.expirationDate && new Date(entry.expirationDate).toLocaleDateString("pt-BR"),
+        id: movement.id,
+        itemId: movement.itemId,
+        itemName: itemMap[movement.itemId]?.name || "Item not found",
+        price: movement.price || "-",
+        quantity: movement.quantity,
+        date: new Date(movement.entryDate).toLocaleDateString("pt-BR"),
+        category: itemMap[movement.itemId]?.category || "-",
+        expirationDate: movement.type === "IN" ?
+          (movement.offDate ? new Date(movement.offDate).toLocaleDateString("pt-BR") : "Não Perecível") :
+          (movement.offDate ? new Date(movement.offDate).toLocaleDateString("pt-BR") : "-"),
+        destination: movement.destination || "-",
         availability,
-        type: "Entrada",
-        movementDate: entry.createdAt || Date.now(),
-        rawDate: entry.entryDate ? new Date(entry.entryDate) : new Date(),
+        type: movement.type,
+        movementDate: new Date(movement.entryDate).getTime(),
+        rawDate: new Date(movement.entryDate),
       };
     }).filter(Boolean);
 
-    const formattedExits = exits
-      .map((exit) => {
-        const availability =
-          itemMap[exit.itemId]?.availability || { status: "Desconhecido", color: "text.secondary" };
-        if (
-          filters.disponibilidade &&
-          filters.disponibilidade !== availability.status
-        ) {
-          return null;
-        }
-        return {
-          id: exit.id,
-          itemId: exit.itemId,
-          itemName: itemMap[exit.itemId]?.name || "Item not found",
-          quantity: exit.quantity,
-          date: new Date(exit.entryDate || Date.now()).toLocaleDateString(
-            "pt-BR"
-          ),
-          category: itemMap[exit.itemId]?.category || "-",
-          destination: exit.destination || "-",
-          exitType: exit.exitType || "-",
-          availability,
-          type: "Saída",
-          movementDate: exit.exitDate ?
-            new Date(exit.exitDate).getTime() :
-            Date.now(),
-          rawDate: exit.entryDate ? new Date(exit.entryDate) : new Date(),
-        };
-      })
-      .filter(Boolean);
-
-    const movements = [...formattedEntries, ...formattedExits].sort(
-      (a, b) => new Date(b.date) - new Date(a.date)
+    const sortedMovements = formattedMovements.sort(
+      (a, b) => new Date(b.rawDate) - new Date(a.rawDate)
     );
 
     return {
-      movements,
+      movements: sortedMovements,
       items: inventoryItems
     };
   } catch (error) {
     console.error("Error fetching stock movements:", error);
     throw error;
   }
+}
+
+export async function addMovementEntry(entryData) {
+  return await addMovement({
+    itemId: entryData.itemId,
+    type: "IN",
+    quantity: entryData.quantity,
+    price: entryData.price,
+    invoiceUrl: entryData.invoiceUrl,
+    offDate: entryData.expirationDate,
+  });
+}
+
+export async function addMovementExit(exitData) {
+  return await addMovement({
+    itemId: exitData.itemId,
+    type: "OUT",
+    quantity: exitData.quantity,
+    destination: exitData.destination,
+    offDate: exitData.exitDate,
+  });
 }
 
 const inventoryService = {

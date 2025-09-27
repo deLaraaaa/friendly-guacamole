@@ -155,17 +155,17 @@ function InventoryTable({ movements = [], loading }) {
                   {CATEGORY_TRANSLATIONS[item.category] || item.category || "-"}
                 </TableCell>
                 <TableCell>
-                  {item.type === "Entrada"
+                  {item.type === "IN"
                     ? item.expirationDate || "Não Perecível"
                     : item.expirationDate || item.date || "-"}
                 </TableCell>
                 <TableCell
                   sx={{
-                    color: item.type === "Entrada" ? "green" : "red",
+                    color: item.type === "IN" ? "green" : "red",
                     fontWeight: "bold",
                   }}
                 >
-                  {item.type}
+                  {item.type === "IN" ? "ENTRADA" : "SAÍDA"}
                 </TableCell>
                 <TableCell
                   sx={{

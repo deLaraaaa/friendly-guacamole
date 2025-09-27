@@ -13,7 +13,7 @@ import {
 import { Add, Remove } from "@mui/icons-material";
 import { CATEGORY_TRANSLATIONS } from "../constants";
 import AddMovementModal from "./AddMovementModal";
-import { addStockEntry, addStockExit } from "../services/inventoryService";
+import { addMovement } from "../services/inventoryService";
 
 export default function ProductCard({
   name,
@@ -40,22 +40,19 @@ export default function ProductCard({
 
   const handleSubmit = async (data) => {
     try {
-      if (movementType === "Entrada") {
-        await addStockEntry({
-          itemId: productId,
-          quantity: Number(data.quantity),
-          expirationDate: data.expirationDate || undefined,
-          price: data.price || undefined,
-        });
+      await addMovement({
+        itemId: productId,
+        type: movementType,
+        quantity: Number(data.quantity),
+        price: data.price,
+        offDate: data.offDate || new Date().toISOString().slice(0, 10),
+        destination: data.destination,
+        invoiceUrl: data.invoiceUrl,
+      });
+
+      if (movementType === "IN") {
         onIncrement(data);
-      } else if (movementType === "Saída") {
-        await addStockExit({
-          itemId: productId,
-          quantity: Number(data.quantity),
-          destination: "KITCHEN",
-          exitType: "USAGE",
-          exitDate: data.exitDate || new Date().toISOString().slice(0, 10),
-        });
+      } else {
         onDecrement(data);
       }
       onUpdate();
@@ -104,7 +101,7 @@ export default function ProductCard({
           </Typography>
         </CardContent>
         <CardActions sx={{ justifyContent: "space-between", px: 1, pb: 1 }}>
-          <IconButton size="small" onClick={() => handleOpenModal("Saída")}>
+          <IconButton size="small" onClick={() => handleOpenModal("OUT")}>
             <Remove fontSize="small" />
           </IconButton>
           <Button
@@ -113,7 +110,7 @@ export default function ProductCard({
           >
             Detalhes
           </Button>
-          <IconButton size="small" onClick={() => handleOpenModal("Entrada")}>
+          <IconButton size="small" onClick={() => handleOpenModal("IN")}>
             <Add fontSize="small" />
           </IconButton>
         </CardActions>
@@ -128,7 +125,7 @@ export default function ProductCard({
           type: movementType,
         }}
         disableFields={
-          movementType === "Entrada"
+          movementType === "IN"
             ? ["product", "category"]
             : ["product", "category"]
         }
