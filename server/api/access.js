@@ -521,7 +521,7 @@ export default {
       type,
       quantity,
       entryDate: new Date(),
-      offDate: offDate || new Date().toISOString().split('T')[0]
+      offDate: offDate || null
     };
 
     if (type === CONST.TABLES.MOVEMENT.TYPES.IN) {

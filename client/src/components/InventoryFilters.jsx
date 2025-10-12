@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Button, TextField, MenuItem, Menu } from "@mui/material";
 
 const DISPONIBILIDADES = ["Em Estoque", "Estoque Baixo", "Fora de Estoque"];
@@ -14,12 +14,27 @@ const CATEGORIAS = [
   "Frozen",
 ];
 
-export default function InventoryFilters({ onChange }) {
+const getDefaultDateRange = () => {
+  const today = new Date();
+  const twoWeeksAgo = new Date(today);
+  twoWeeksAgo.setDate(today.getDate() - 7);
+  const twoWeeksAhead = new Date(today);
+  twoWeeksAhead.setDate(today.getDate() + 7);
+
+  return {
+    dataInicio: twoWeeksAgo.toISOString().split("T")[0],
+    dataFim: twoWeeksAhead.toISOString().split("T")[0],
+  };
+};
+
+export default function InventoryFilters({ onChange, initialFilters = {} }) {
+  const defaultDates = getDefaultDateRange();
+
   const [filters, setFilters] = useState({
     disponibilidade: "",
     status: "",
-    dataInicio: "",
-    dataFim: "",
+    dataInicio: initialFilters.dataInicio || defaultDates.dataInicio,
+    dataFim: initialFilters.dataFim || defaultDates.dataFim,
     categoria: "",
     produto: "",
   });
@@ -47,13 +62,23 @@ export default function InventoryFilters({ onChange }) {
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleFilterClose}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
         PaperProps={{ sx: { p: 2, minWidth: 320 } }}
       >
         <Box
           component="form"
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
         >
           <TextField
             select
@@ -126,7 +151,12 @@ export default function InventoryFilters({ onChange }) {
             margin="dense"
           />
           <Box
-            sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 1 }}
+            sx={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 1,
+              mt: 1,
+            }}
           >
             <Button onClick={handleFilterClose}>Cancelar</Button>
             <Button
