@@ -4,12 +4,7 @@ import Metrics from "../components/Metrics";
 import InventoryTable from "../components/InventoryTable";
 import InventoryFilters from "../components/InventoryFilters";
 import AddMovementModal from "../components/AddMovementModal";
-import {
-  addMovement,
-  getStockMovements,
-  getMovements,
-  getInventoryItems,
-} from "../services/inventoryService";
+import { addMovement, getStockMovements } from "../services/inventoryService";
 
 const getDefaultDateRange = () => {
   const today = new Date();
@@ -34,28 +29,6 @@ export default function Inventory() {
   const [reload, setReload] = useState(false);
   const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [allItems, setAllItems] = useState([]);
-  const [allMovements, setAllMovements] = useState([]);
-  const [metricsLoading, setMetricsLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchMetricsData = async () => {
-      setMetricsLoading(true);
-      try {
-        const [allMovementsData, allItemsData] = await Promise.all([
-          getMovements({}),
-          getInventoryItems({}),
-        ]);
-        setAllMovements(allMovementsData);
-        setAllItems(allItemsData);
-      } catch (error) {
-        console.error("Failed to fetch metrics data:", error);
-      } finally {
-        setMetricsLoading(false);
-      }
-    };
-    fetchMetricsData();
-  }, []);
 
   useEffect(() => {
     const fetchTableData = async () => {
@@ -92,11 +65,7 @@ export default function Inventory() {
           borderRadius: "8px",
         }}
       >
-        <Metrics
-          items={allItems}
-          movements={allMovements}
-          loading={metricsLoading}
-        />
+        <Metrics refreshTrigger={reload} />
       </div>
       <div style={{ width: "100%" }}>
         <div

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import PropTypes from "prop-types";
 import {
   Box,
   Typography,
@@ -7,8 +8,16 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/material";
+import { getMetrics } from "../services/inventoryService";
 
-export default function Metrics({ items = [], movements = [], loading }) {
+let metricsCache = null;
+let cacheTimestamp = null;
+const CACHE_DURATION = 5 * 60 * 1000;
+
+export default function Metrics({
+  loading: externalLoading = false,
+  refreshTrigger = 0,
+}) {
   const [metricsData, setMetricsData] = useState({
     totalProducts: 0,
     highestExit: {
@@ -22,77 +31,53 @@ export default function Metrics({ items = [], movements = [], loading }) {
     lowStock: 0,
     lowStockItems: [],
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (items.length > 0 || movements.length > 0) {
-      const exits = movements.filter((m) => m.type === "OUT");
-      const totalProducts = items.length;
-      const lowStockItems = items.filter(
-        (item) => item.quantity > 0 && item.quantity <= 10
-      );
-      const lowStock = lowStockItems.length;
-      let highestExit = {
-        name: "-",
-        quantity: 0,
-      };
-      let lowestExit = {
-        name: "-",
-        quantity: Number.MAX_SAFE_INTEGER,
-      };
-
-      if (exits.length > 0) {
-        const exitsByItem = {};
-        exits.forEach((exit) => {
-          if (!exitsByItem[exit.itemId]) {
-            exitsByItem[exit.itemId] = {
-              itemId: exit.itemId,
-              quantity: 0,
-              name:
-                items.find((item) => item.id === exit.itemId)?.name ||
-                "Unknown",
-            };
-          }
-          exitsByItem[exit.itemId].quantity += exit.quantity;
-        });
-        const exitItems = Object.values(exitsByItem);
-        if (exitItems.length > 0) {
-          highestExit = exitItems.reduce(
-            (max, item) => (item.quantity > max.quantity ? item : max),
-            { quantity: 0 }
-          );
-          lowestExit = exitItems.reduce(
-            (min, item) => (item.quantity < min.quantity ? item : min),
-            { quantity: Number.MAX_SAFE_INTEGER }
-          );
-        }
+    const fetchMetrics = async () => {
+      const now = Date.now();
+      if (
+        metricsCache &&
+        cacheTimestamp &&
+        now - cacheTimestamp < CACHE_DURATION
+      ) {
+        setMetricsData(metricsCache);
+        setLoading(false);
+        return;
       }
 
-      setMetricsData({
-        totalProducts,
-        highestExit: {
-          name: highestExit.name,
-          quantity: highestExit.quantity,
-        },
-        lowestExit: {
-          name: lowestExit.name,
-          quantity:
-            lowestExit.quantity === Number.MAX_SAFE_INTEGER
-              ? 0
-              : lowestExit.quantity,
-        },
-        lowStock,
-        lowStockItems: lowStockItems.map((item) => ({
-          name: item.name,
-          quantity: item.quantity,
-        })),
-      });
-    }
-  }, [items, movements]);
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getMetrics();
+        setMetricsData(data);
 
-  if (loading) {
+        metricsCache = data;
+        cacheTimestamp = now;
+      } catch (err) {
+        console.error("Failed to fetch metrics:", err);
+        setError("Erro ao carregar métricas");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMetrics();
+  }, [refreshTrigger]);
+
+  if (loading || externalLoading) {
     return (
       <Box textAlign="center" p={3}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box p={3}>
+        <Alert severity="error">{error}</Alert>
       </Box>
     );
   }
@@ -211,3 +196,8 @@ export default function Metrics({ items = [], movements = [], loading }) {
     </Box>
   );
 }
+
+Metrics.propTypes = {
+  loading: PropTypes.bool,
+  refreshTrigger: PropTypes.number,
+};

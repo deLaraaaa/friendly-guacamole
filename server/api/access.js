@@ -576,5 +576,57 @@ export default {
 
     const queryFilters = { ...otherFilters, restaurantId };
     return await crud.list(user, CONST.TABLES.MOVEMENT.KIND, queryFilters);
+  },
+
+  async getMetrics(user) {
+    if (!user) throw { status: 401, message: "Unauthorized" };
+    const restaurantId = user.restaurantId;
+
+    const query = `
+      WITH exit_totals AS (
+        SELECT 
+          m."itemId",
+          SUM(m.quantity) as total_exits,
+          i.name as item_name
+        FROM "Movement" m
+        JOIN "InventoryItems" i ON m."itemId" = i.id
+        WHERE m."restaurantId" = $1 
+          AND m.type = 'OUT'
+        GROUP BY m."itemId", i.name
+      ),
+      low_stock_items AS (
+        SELECT 
+          id,
+          name,
+          quantity
+        FROM "InventoryItems"
+        WHERE "restaurantId" = $1 
+          AND quantity > 0 
+          AND quantity <= 10
+      )
+      SELECT 
+        (SELECT COUNT(*) FROM "InventoryItems" WHERE "restaurantId" = $1) as total_products,
+        (SELECT COUNT(*) FROM low_stock_items) as low_stock_count,
+        (SELECT json_agg(json_build_object('name', name, 'quantity', quantity)) FROM low_stock_items) as low_stock_items,
+        (SELECT json_build_object('name', item_name, 'quantity', total_exits) 
+         FROM exit_totals 
+         ORDER BY total_exits DESC 
+         LIMIT 1) as highest_exit,
+        (SELECT json_build_object('name', item_name, 'quantity', total_exits) 
+         FROM exit_totals 
+         ORDER BY total_exits ASC 
+         LIMIT 1) as lowest_exit
+    `;
+
+    const result = await crud.rawQuery(user, query, [restaurantId]);
+    const metrics = result[0];
+
+    return {
+      totalProducts: parseInt(metrics.total_products) || 0,
+      highestExit: metrics.highest_exit || { name: "-", quantity: 0 },
+      lowestExit: metrics.lowest_exit || { name: "-", quantity: 0 },
+      lowStock: parseInt(metrics.low_stock_count) || 0,
+      lowStockItems: metrics.low_stock_items || []
+    };
   }
 };

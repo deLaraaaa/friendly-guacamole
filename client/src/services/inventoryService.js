@@ -118,6 +118,15 @@ export async function getMovements(filters = {}) {
 }
 
 /**
+ * Gets optimized metrics data from the backend
+ * @returns {Promise<Object>} - Metrics data
+ */
+export async function getMetrics() {
+  const endpoint = "/metrics";
+  return await apiRequest(endpoint, { method: "GET" });
+}
+
+/**
  * Enhanced getStockMovements that uses the new Movement table
  * @param {Object} filters - Optional filters to apply
  * @returns {Promise<Object>} - Object containing movements and items
