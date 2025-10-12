@@ -42,7 +42,7 @@ export default function AddMovementModal({
     type: prefilledData.type || "",
     quantity: "",
     price: "",
-    offDate: today,
+    offDate: "",
     destination: "KITCHEN",
     invoiceUrl: "",
   });
@@ -58,13 +58,23 @@ export default function AddMovementModal({
       setForm((prev) => ({
         ...prev,
         ...prefilledData,
-        type: getMovementValue(prefilledData.type), // Convert label to value
+        type: getMovementValue(prefilledData.type),
       }));
     }
-  }, [open]); // Remove prefilledData from dependencies
+  }, [open]);
 
   const handleChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const newForm = { ...prev, [field]: value };
+
+      if (field === "type" && value === "IN") {
+        newForm.offDate = "";
+      } else if (field === "type" && value === "OUT") {
+        newForm.offDate = today;
+      }
+
+      return newForm;
+    });
   };
 
   const handleSubmit = () => {
@@ -92,7 +102,7 @@ export default function AddMovementModal({
         type: "",
         quantity: "",
         price: "",
-        offDate: today,
+        offDate: "",
         destination: "KITCHEN",
         invoiceUrl: "",
       });
@@ -199,14 +209,22 @@ export default function AddMovementModal({
             <MenuItem value="OTHER">Outro</MenuItem>
           </TextField>
         )}
-        <TextField
-          label={form.type === "IN" ? "Data de Validade" : "Data de Saída"}
-          type="date"
-          value={form.offDate}
-          onChange={(e) => handleChange("offDate", e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          required
-        />
+        {form.type && (
+          <TextField
+            label={form.type === "IN" ? "Data de Validade" : "Data de Saída"}
+            type="date"
+            value={form.offDate}
+            onChange={(e) => handleChange("offDate", e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            required={form.type === "OUT"}
+            slotProps={{
+              htmlInput: { max: today },
+            }}
+            helperText={
+              form.type === "IN" && "Deixe vazio para itens não perecíveis"
+            }
+          />
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancelar</Button>

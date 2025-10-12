@@ -118,6 +118,15 @@ export async function getMovements(filters = {}) {
 }
 
 /**
+ * Gets optimized metrics data from the backend
+ * @returns {Promise<Object>} - Metrics data
+ */
+export async function getMetrics() {
+  const endpoint = "/metrics";
+  return await apiRequest(endpoint, { method: "GET" });
+}
+
+/**
  * Enhanced getStockMovements that uses the new Movement table
  * @param {Object} filters - Optional filters to apply
  * @returns {Promise<Object>} - Object containing movements and items
@@ -131,7 +140,9 @@ export async function getStockMovements(filters = {}) {
     if (filters.categoria) itemFilters.category = filters.categoria;
     if (filters.dataInicio) movementFilters.dataInicio = filters.dataInicio;
     if (filters.dataFim) movementFilters.dataFim = filters.dataFim;
-    if (filters.status) movementFilters.type = filters.status;
+    if (filters.status) {
+      movementFilters.type = filters.status === "Entrada" ? "IN" : "OUT";
+    }
 
     const [movements, inventoryItems] = await Promise.all([
       getMovements(movementFilters),

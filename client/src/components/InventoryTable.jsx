@@ -9,12 +9,27 @@ import Paper from "@mui/material/Paper";
 import {
   Box,
   CircularProgress,
-  Alert,
   TablePagination,
   TableSortLabel,
 } from "@mui/material";
 import { useWindowSize } from "../hooks/useWindowSize";
 import { CATEGORY_TRANSLATIONS } from "../constants";
+
+const formatPrice = (price) => {
+  if (!price || price === "" || price === null || price === undefined)
+    return "-";
+
+  const cleanPrice = price.toString().replace(/[^\d,.-]/g, "");
+  if (!cleanPrice || cleanPrice === "") return "-";
+  const numericPrice = parseFloat(cleanPrice.replace(",", "."));
+
+  if (isNaN(numericPrice)) return "-";
+
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(numericPrice);
+};
 
 const columns = [
   { id: "itemName", label: "Produto" },
@@ -149,7 +164,7 @@ function InventoryTable({ movements = [], loading }) {
                 <TableCell component="th" scope="row">
                   {item.itemName}
                 </TableCell>
-                <TableCell>{item.price ? "R$ " + item.price : "-"}</TableCell>
+                <TableCell>{formatPrice(item.price)}</TableCell>
                 <TableCell>{item.quantity}</TableCell>
                 <TableCell>
                   {CATEGORY_TRANSLATIONS[item.category] || item.category || "-"}
