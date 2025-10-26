@@ -28,7 +28,7 @@ router.get("/api/accounts", async (req, res) => {
 
 router.post("/api/restaurant_register", async (req, res) => {
   try {
-    const restaurant = await api.restaurantRegister(req.user, req.body);
+    const restaurant = await api.restaurantRegister(req.body);
     res.status(201).json(restaurant);
   } catch (error) {
     console.error("Error registering restaurant:", error);
