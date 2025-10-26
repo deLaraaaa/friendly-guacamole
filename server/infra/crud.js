@@ -13,7 +13,7 @@ const pool = new Pool(CONST.DB_CONFIG);
 // TODO: FTH.RL - REMOVE CONSOLE.ERROR
 const crud = {
   async create(user, kind, data) {
-    if (!user) throw new Error(CONST.ERROR_MESSAGES.MISSING_USER);
+    if (!user) throw new Error(CONST.ERRORS.ERR_0000.Message);
     const table = `"${kind}"`;
     const keys = Object.keys(data).map(key => `"${key}"`);
     const values = Object.values(data);
@@ -34,7 +34,7 @@ const crud = {
   },
 
   async list(user, kind, filter = {}, limit = 100) {
-    if (!user) throw new Error(CONST.ERROR_MESSAGES.MISSING_USER);
+    if (!user) throw new Error(CONST.ERRORS.ERR_0000.Message);
     const table = `"${kind}"`;
 
     const keys = Object.keys(filter).filter(k => k !== "limit");
@@ -67,7 +67,7 @@ const crud = {
   },
 
   async read(user, kind, filter) {
-    if (!user) throw new Error(CONST.ERROR_MESSAGES.MISSING_USER);
+    if (!user) throw new Error(CONST.ERRORS.ERR_0000.Message);
     const client = await pool.connect();
     try {
       const table = `"${kind}"`;
@@ -112,7 +112,7 @@ const crud = {
   },
 
   async update(user, kind, filter, data) {
-    if (!user) throw new Error(CONST.ERROR_MESSAGES.MISSING_USER);
+    if (!user) throw new Error(CONST.ERRORS.ERR_0000.Message);
     if (!filter || !data) {
       throw new Error(CONST.ERROR_MESSAGES.MISSING_PARAMS);
     }
@@ -171,7 +171,7 @@ const crud = {
   },
 
   async rawQuery(user, query, params = []) {
-    if (!user) throw new Error(CONST.ERROR_MESSAGES.MISSING_USER);
+    if (!user) throw new Error(CONST.ERRORS.ERR_0000.Message);
     const client = await pool.connect();
     try {
       const result = await client.query(query, params);
@@ -185,7 +185,7 @@ const crud = {
   },
 
   async searchLike(user, kind, field, value) {
-    if (!user) throw new Error(CONST.ERROR_MESSAGES.MISSING_USER);
+    if (!user) throw new Error(CONST.ERRORS.ERR_0000.Message);
     const table = `"${kind}"`;
     const query = `SELECT * FROM ${table} WHERE "${field}" ILIKE $1`;
     const searchPattern = `%${value}%`;

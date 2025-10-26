@@ -6,14 +6,20 @@ import process from "process";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, "../.env"), });
 
+const dbConfig = {
+  user: process.env.DB_USER,
+  host: process.env.HOST,
+  database: process.env.DATABASE,
+  password: process.env.PASSWORD,
+  port: Number.parseInt(process.env.DB_PORT)
+};
+
+if (process.env.REQUIRE_SSL === "true") {
+  dbConfig.ssl = { rejectUnauthorized: false };
+}
+
 const CONST = {
-  DB_CONFIG: {
-    user: process.env.DB_USER,
-    host: process.env.HOST,
-    database: process.env.DATABASE,
-    password: process.env.PASSWORD,
-    port: parseInt(process.env.DB_PORT)
-  },
+  DB_CONFIG: dbConfig,
 
   SERVER_CONFIG: {
     PORT: process.env.PORT,
@@ -127,6 +133,7 @@ const CONST = {
   },
 
   ERRORS: {
+    ERR_0000: { Code: "0000", Message: "Missing user" },
     ERR_1000: { Code: "1000", Message: "Only admins can change User Roles" },
     ERR_1001: { Code: "1001", Message: "Only admins can add inventory items" },
     ERR_2000: { Code: "2000", Message: "Missing required fields" },
