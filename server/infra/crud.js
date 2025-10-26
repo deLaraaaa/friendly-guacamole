@@ -111,6 +111,26 @@ const crud = {
     }
   },
 
+  async createLogin(kind, data) {
+    const table = `"${kind}"`;
+    const keys = Object.keys(data).map(key => `"${key}"`);
+    const values = Object.values(data);
+    const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
+
+    const query = `INSERT INTO ${table} (${keys.join(", ")}) VALUES (${placeholders}) RETURNING *`;
+
+    const client = await pool.connect();
+    try {
+      const result = await client.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error in createWithoutUser:", error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
   async update(user, kind, filter, data) {
     if (!user) throw new Error(CONST.ERRORS.ERR_0000.Message);
     if (!filter || !data) {

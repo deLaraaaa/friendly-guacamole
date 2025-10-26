@@ -17,7 +17,7 @@ export default {
     }
   },
 
-  async restaurantRegister(user, data) {
+  async restaurantRegister(data) {
     let { namespace } = data;
     namespace = validator.escape(namespace.trim());
 
@@ -25,12 +25,12 @@ export default {
       throw { status: 400, message: "Restaurant namespace is required" };
     }
 
-    const existingRestaurant = await crud.read(user, CONST.TABLES.RESTAURANT.KIND, { namespace });
+    const existingRestaurant = await crud.readLogin(CONST.TABLES.RESTAURANT.KIND, { namespace });
     if (existingRestaurant) {
       throw { status: 409, ...CONST.ERRORS.ERR_2005 };
     }
 
-    const newRestaurant = await crud.create(user, CONST.TABLES.RESTAURANT.KIND, {
+    const newRestaurant = await crud.createLogin(CONST.TABLES.RESTAURANT.KIND, {
       namespace,
       createdAt: new Date()
     });
