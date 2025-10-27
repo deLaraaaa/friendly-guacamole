@@ -38,6 +38,64 @@ export default {
     return newRestaurant;
   },
 
+  async registerFirstUser(data) {
+    let {
+      // eslint-disable-next-line prefer-const
+      username, password, namespace, email, role
+    } = data;
+
+    username = validator.escape(username.trim());
+    namespace = validator.escape(namespace.trim());
+    email = validator.normalizeEmail(email.trim());
+    role = role.toUpperCase();
+
+    if (!username || !password || !namespace || !email || !role) {
+      throw { status: 400, ...CONST.ERRORS.ERR_2000 };
+    }
+
+    if (!validator.isEmail(email)) {
+      throw { status: 400, ...CONST.ERRORS.ERR_2001 };
+    }
+
+    const validRoles = Object.values(CONST.TABLES.ACCOUNT.ROLE);
+    if (!validRoles.includes(role)) {
+      throw { status: 400, ...CONST.ERRORS.ERR_2004 };
+    }
+
+    const restaurant = await crud.readLogin(CONST.TABLES.RESTAURANT.KIND, { namespace });
+    if (!restaurant) {
+      throw { status: 404, message: "Restaurant not found. Create restaurant first using /api/restaurant_register" };
+    }
+
+    const restaurantId = restaurant.id;
+
+    const existingUserByUsername = await crud.readLogin(CONST.TABLES.ACCOUNT.KIND, { username, namespace });
+    if (existingUserByUsername) {
+      throw { status: 409, ...CONST.ERRORS.ERR_2006 };
+    }
+
+    const existingUserByEmail = await crud.readLogin(CONST.TABLES.ACCOUNT.KIND, { email });
+    if (existingUserByEmail) {
+      throw { status: 409, ...CONST.ERRORS.ERR_2007 };
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Criar usuário sem autenticação (uso crud.createLogin)
+    const newUser = await crud.createLogin(CONST.TABLES.ACCOUNT.KIND, {
+      username,
+      password: hashedPassword,
+      namespace,
+      email,
+      restaurantId,
+      role,
+      createdAt: new Date()
+    });
+
+    const { password: _, ...userWithoutPassword } = newUser;
+    return userWithoutPassword;
+  },
+
   async register(user, data) {
     let {
       // eslint-disable-next-line prefer-const

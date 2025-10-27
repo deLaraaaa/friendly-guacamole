@@ -36,6 +36,16 @@ router.post("/api/restaurant_register", async (req, res) => {
   }
 });
 
+router.post("/api/register_first_user", async (req, res) => {
+  try {
+    const user = await api.registerFirstUser(req.body);
+    res.status(201).json(user);
+  } catch (error) {
+    console.error("Error registering first user:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to register first user" });
+  }
+});
+
 router.post("/api/register", async (req, res) => {
   try {
     const user = await api.register(req.user, req.body);
