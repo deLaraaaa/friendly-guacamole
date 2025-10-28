@@ -48,15 +48,16 @@ export default function AddProductModal({ open, onClose, onSuccess }) {
       const item = await addInventoryItem({
         name: form.name,
         category: form.category,
-        quantity: 0,
+        quantity: form.quantity,
         expirationDate: form.expirationDate || undefined,
       });
 
       await addMovement({
         itemId: item.id,
+        type: "IN",
         quantity: Number(form.quantity),
         price: form.price ? Number(form.price) : undefined,
-        expirationDate: form.expirationDate || undefined,
+        offDate: form.expirationDate || undefined,
       });
 
       setLoading(false);
