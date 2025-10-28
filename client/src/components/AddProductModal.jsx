@@ -11,7 +11,7 @@ import {
   Box,
   Alert,
 } from "@mui/material";
-import { addInventoryItem, addStockEntry } from "../services/inventoryService";
+import { addInventoryItem, addMovement } from "../services/inventoryService";
 import Autocomplete from "@mui/material/Autocomplete";
 import { CATEGORY_TRANSLATIONS } from "../constants";
 
@@ -52,7 +52,7 @@ export default function AddProductModal({ open, onClose, onSuccess }) {
         expirationDate: form.expirationDate || undefined,
       });
 
-      await addStockEntry({
+      await addMovement({
         itemId: item.id,
         quantity: Number(form.quantity),
         price: form.price ? Number(form.price) : undefined,
