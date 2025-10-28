@@ -7,7 +7,7 @@ import { apiRequest } from "./apiClient";
  */
 export async function getStockEntries(filters = {}) {
   const queryString = new URLSearchParams(filters).toString();
-  const endpoint = `/list_stock_entries${queryString ? `?${queryString}` : ""}`;
+  const endpoint = `/api/list_stock_entries${queryString ? `?${queryString}` : ""}`;
   return await apiRequest(endpoint, { method: "GET" });
 }
 
@@ -18,7 +18,7 @@ export async function getStockEntries(filters = {}) {
  */
 export async function getStockExits(filters = {}) {
   const queryString = new URLSearchParams(filters).toString();
-  const endpoint = `/list_stock_exits${queryString ? `?${queryString}` : ""}`;
+  const endpoint = `/api/list_stock_exits${queryString ? `?${queryString}` : ""}`;
   return await apiRequest(endpoint, { method: "GET" });
 }
 
@@ -33,7 +33,7 @@ export async function getStockExits(filters = {}) {
  * @returns {Promise<Object>} - The created stock entry
  */
 export async function addStockEntry(entryData) {
-  const endpoint = "/stock_entry";
+  const endpoint = "/api/stock_entry";
   return await apiRequest(endpoint, {
     method: "POST",
     body: JSON.stringify(entryData),
@@ -51,7 +51,7 @@ export async function addStockEntry(entryData) {
  * @returns {Promise<Object>} - The created stock exit
  */
 export async function addStockExit(exitData) {
-  const endpoint = "/stock_exits";
+  const endpoint = "/api/stock_exits";
   return await apiRequest(endpoint, {
     method: "POST",
     body: JSON.stringify(exitData),
@@ -65,7 +65,7 @@ export async function addStockExit(exitData) {
  */
 export async function getInventoryItems(filters = {}) {
   const queryString = new URLSearchParams(filters).toString();
-  const endpoint = `/inventory_items${queryString ? `?${queryString}` : ""}`;
+  const endpoint = `/api/inventory_items${queryString ? `?${queryString}` : ""}`;
   return await apiRequest(endpoint, { method: "GET" });
 }
 
@@ -79,7 +79,7 @@ export async function getInventoryItems(filters = {}) {
  * @returns {Promise<Object>} - The created inventory item
  */
 export async function addInventoryItem(itemData) {
-  const endpoint = "/add_item";
+  const endpoint = "/api/add_item";
   return await apiRequest(endpoint, {
     method: "POST",
     body: JSON.stringify(itemData),
@@ -99,7 +99,7 @@ export async function addInventoryItem(itemData) {
  * @returns {Promise<Object>} - The created movement
  */
 export async function addMovement(movementData) {
-  const endpoint = "/movement";
+  const endpoint = "/api/movement";
   return await apiRequest(endpoint, {
     method: "POST",
     body: JSON.stringify(movementData),
@@ -113,7 +113,7 @@ export async function addMovement(movementData) {
  */
 export async function getMovements(filters = {}) {
   const queryString = new URLSearchParams(filters).toString();
-  const endpoint = `/movements${queryString ? `?${queryString}` : ""}`;
+  const endpoint = `/api/movements${queryString ? `?${queryString}` : ""}`;
   return await apiRequest(endpoint, { method: "GET" });
 }
 
@@ -227,7 +227,7 @@ export async function addMovementExit(exitData) {
 const inventoryService = {
   getInventoryItems: async (filters = {}) => {
     const queryString = new URLSearchParams(filters).toString();
-    const endpoint = `/inventory_items${queryString ? `?${queryString}` : ""}`;
+    const endpoint = `/api/inventory_items${queryString ? `?${queryString}` : ""}`;
     return await apiRequest(endpoint, { method: "GET" });
   },
 };

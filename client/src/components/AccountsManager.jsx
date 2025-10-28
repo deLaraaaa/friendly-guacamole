@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button, Box, CircularProgress, Typography } from "@mui/material";
 import AccountList from "./AccountList";
+import { apiRequest } from "../services/apiClient";
 
 function AccountsManager() {
   const [accounts, setAccounts] = useState([]);
@@ -12,14 +13,9 @@ function AccountsManager() {
     setError(null);
 
     try {
-      const response = await fetch("http://localhost:3001/api/accounts");
+      const response = await apiRequest("/api/accounts", { method: "GET" });
 
-      if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setAccounts(data);
+      setAccounts(response);
     } catch (err) {
       console.error("Error fetching accounts:", err);
       setError(err.message || "Failed to fetch accounts");

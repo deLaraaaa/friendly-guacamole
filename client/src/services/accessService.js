@@ -11,7 +11,7 @@ import { apiRequest } from "./apiClient";
  * @returns {Promise<Object>} - The registered user data.
  */
 export async function register(userData) {
-  const endpoint = "/register";
+  const endpoint = "/api/register";
   return await apiRequest(endpoint, {
     method: "POST",
     body: JSON.stringify(userData),
@@ -25,7 +25,7 @@ export async function register(userData) {
  * @returns {Promise<Object>} - The user data and token.
  */
 export async function login(login, password, rememberMe) {
-  const endpoint = "/login";
+  const endpoint = "/api/login";
   const body = {
     login, password, rememberMe
   };
@@ -41,7 +41,7 @@ export async function login(login, password, rememberMe) {
  * @returns {Promise<Object>} - A success message.
  */
 export async function sendResetCode(email) {
-  const endpoint = "/send_reset_code";
+  const endpoint = "/api/send_reset_code";
   const body = { email };
   return await apiRequest(endpoint, {
     method: "POST",
@@ -57,7 +57,7 @@ export async function sendResetCode(email) {
  * @returns {Promise<Object>} - A success message.
  */
 export async function resetPassword(email, resetToken, newPassword) {
-  const endpoint = "/reset_password";
+  const endpoint = "/api/reset_password";
   const body = {
     email, resetToken, newPassword
   };
@@ -74,7 +74,7 @@ export async function resetPassword(email, resetToken, newPassword) {
  * @returns {Promise<Object>} - A success message.
  */
 export async function changeUserRole(userId, newRole) {
-  const endpoint = "/change_user_role";
+  const endpoint = "/api/change_user_role";
   const body = { userId, newRole };
   return await apiRequest(endpoint, {
     method: "POST",
@@ -83,6 +83,6 @@ export async function changeUserRole(userId, newRole) {
 }
 
 export function getCurrentUser() {
-  const endpoint = "/validate_token";
+  const endpoint = "/api/validate_token";
   return apiRequest(endpoint, { method: "GET" });
 }

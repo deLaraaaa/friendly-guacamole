@@ -5,7 +5,7 @@ import { apiRequest } from "./apiClient";
  * @returns {Promise<Array>} - List of users.
  */
 export async function getUsers() {
-  const endpoint = "/users";
+  const endpoint = "/api/users";
   return await apiRequest(endpoint, { method: "GET" });
 }
 
@@ -17,7 +17,7 @@ export async function getUsers() {
  * @returns {Promise<Object>} - The created user.
  */
 export async function createUser(userData) {
-  const endpoint = "/create_user";
+  const endpoint = "/api/create_user";
   return await apiRequest(endpoint, {
     method: "POST",
     body: JSON.stringify(userData),
@@ -31,7 +31,7 @@ export async function createUser(userData) {
  * @returns {Promise<Object>} - The updated user.
  */
 export async function toggleUserActivation(userId, active) {
-  const endpoint = "/toggle_user_activation";
+  const endpoint = "/api/toggle_user_activation";
   return await apiRequest(endpoint, {
     method: "POST",
     body: JSON.stringify({ userId, active }),
@@ -46,12 +46,10 @@ export async function toggleUserActivation(userId, active) {
  * @returns {Promise<Object>} - Response message.
  */
 export async function changePassword(data) {
-  const endpoint = "/change_password";
+  const endpoint = "/api/change_password";
   return await apiRequest(endpoint, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${data.token}`,
-    },
+    headers: { Authorization: `Bearer ${data.token}` },
     body: JSON.stringify(data),
   });
 }
@@ -61,7 +59,7 @@ export async function changePassword(data) {
  * @returns {Promise<Object>} - Current user's details.
  */
 export async function getCurrentUser() {
-  const endpoint = "/validate_token";
+  const endpoint = "/api/validate_token";
   return await apiRequest(endpoint, { method: "GET" });
 }
 
@@ -71,7 +69,7 @@ export async function getCurrentUser() {
  * @returns {Promise<Object>} - The updated user.
  */
 export async function deleteUser(userId) {
-  const endpoint = "/delete_user";
+  const endpoint = "/api/delete_user";
   return await apiRequest(endpoint, {
     method: "POST",
     body: JSON.stringify({ userId }),
