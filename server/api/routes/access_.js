@@ -122,6 +122,16 @@ router.get("/api/inventory_items", authenticate, async (req, res) => {
   }
 });
 
+router.post("/api/update_inventory_item", authenticate, async (req, res) => {
+  try {
+    const result = await api.updateInventoryItem(req.user, req.body);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error updating inventory item:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to update inventory item" });
+  }
+});
+
 router.post("/api/stock_entry", authenticate, async (req, res) => {
   try {
     const result = await api.addStockEntry(req.user, req.body);
@@ -258,6 +268,16 @@ router.post("/api/delete_user", authenticate, async (req, res) => {
   } catch (error) {
     console.error("Error deleting user:", error);
     res.status(error.status || 500).json({ error: error.message || "Failed to delete user" });
+  }
+});
+
+router.post("/api/change_user_role", authenticate, async (req, res) => {
+  try {
+    const result = await api.changeUserRole(req.user, req.body);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error changing user role:", error);
+    res.status(error.status || 500).json({ error: error.message || "Failed to change user role" });
   }
 });
 

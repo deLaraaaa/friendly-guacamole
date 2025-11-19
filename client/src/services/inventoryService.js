@@ -87,6 +87,22 @@ export async function addInventoryItem(itemData) {
 }
 
 /**
+ * Updates an inventory item
+ * @param {Object} itemData - The item data to update
+ * @param {string} itemData.itemId - ID of the item to update
+ * @param {string} itemData.name - New name of the item
+ * @param {string} itemData.category - New category of the item
+ * @returns {Promise<Object>} - The updated inventory item
+ */
+export async function updateInventoryItem(itemData) {
+  const endpoint = "/api/update_inventory_item";
+  return await apiRequest(endpoint, {
+    method: "POST",
+    body: JSON.stringify(itemData),
+  });
+}
+
+/**
  * Adds a new movement (replaces addStockEntry and addStockExit)
  * @param {Object} movementData - The movement data
  * @param {number} movementData.itemId - ID of the inventory item

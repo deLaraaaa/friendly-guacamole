@@ -38,6 +38,20 @@ export default function InventoryFilters({ onChange }) {
     handleFilterClose();
   };
 
+  const handleClearFilters = () => {
+    const emptyFilters = {
+      disponibilidade: "",
+      status: "",
+      dataInicio: "",
+      dataFim: "",
+      categoria: "",
+      produto: "",
+    };
+    setFilters(emptyFilters);
+    if (onChange) onChange(emptyFilters);
+    handleFilterClose();
+  };
+
   return (
     <>
       <Button variant="outlined" color="primary" onClick={handleFilterClick}>
@@ -53,7 +67,11 @@ export default function InventoryFilters({ onChange }) {
       >
         <Box
           component="form"
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
         >
           <TextField
             select
@@ -126,16 +144,26 @@ export default function InventoryFilters({ onChange }) {
             margin="dense"
           />
           <Box
-            sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 1 }}
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 1,
+              mt: 1,
+            }}
           >
-            <Button onClick={handleFilterClose}>Cancelar</Button>
-            <Button
-              onClick={handleApplyFilters}
-              variant="contained"
-              color="primary"
-            >
-              Aplicar
+            <Button onClick={handleClearFilters} color="secondary">
+              Limpar
             </Button>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button onClick={handleFilterClose}>Cancelar</Button>
+              <Button
+                onClick={handleApplyFilters}
+                variant="contained"
+                color="primary"
+              >
+                Aplicar
+              </Button>
+            </Box>
           </Box>
         </Box>
       </Menu>
