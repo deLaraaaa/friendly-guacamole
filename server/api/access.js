@@ -293,6 +293,12 @@ export default {
       throw { status: 400, message: "UserId and newRole are required" };
     }
 
+    // Check if trying to change an admin user
+    const targetUser = await crud.read(user, CONST.TABLES.ACCOUNT.KIND, { id: userId, restaurantId });
+    if (targetUser && targetUser.role === CONST.TABLES.ACCOUNT.ROLE.ADMIN) {
+      throw { status: 400, message: "Não é possível alterar o role de um administrador" };
+    }
+
     const validRoles = Object.values(CONST.TABLES.ACCOUNT.ROLE);
     if (!validRoles.includes(newRole)) {
       throw { status: 400, ...CONST.ERRORS.ERR_2004 };
@@ -320,6 +326,32 @@ export default {
     return crud.create(user, CONST.TABLES.INVENTORY_ITEMS.KIND, {
       name, category, quantity, restaurantId
     });
+  },
+
+  async updateInventoryItem(user, data) {
+    if (user.role !== CONST.TABLES.ACCOUNT.ROLE.ADMIN) throw { status: 404, ...CONST.ERRORS.ERR_1001 };
+
+    const { itemId, name, category } = data;
+    const restaurantId = user.restaurantId;
+
+    if (!itemId) {
+      throw { status: 400, message: "ItemId is required" };
+    }
+
+    if (!name || !category) {
+      throw { status: 400, message: "Name and category are required" };
+    }
+
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (category) updateData.category = category;
+
+    return await crud.update(
+      user,
+      CONST.TABLES.INVENTORY_ITEMS.KIND,
+      { id: itemId, restaurantId },
+      updateData
+    );
   },
 
   async addStockEntry(user, data) {

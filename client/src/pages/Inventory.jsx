@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Box, Button } from "@mui/material";
+import { Box, Button, Alert } from "@mui/material";
 import Metrics from "../components/Metrics";
 import InventoryTable from "../components/InventoryTable";
 import InventoryFilters from "../components/InventoryFilters";
@@ -14,6 +14,7 @@ export default function Inventory() {
   const [loading, setLoading] = useState(false);
   const [allItems, setAllItems] = useState([]);
   const [allMovements, setAllMovements] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // Buscar todos os dados ao montar o componente
@@ -23,8 +24,10 @@ export default function Inventory() {
           await getStockMovements({});
         setAllMovements(allMovementsData);
         setAllItems(allItemsData);
+        setError(null);
       } catch (error) {
         console.error("Failed to fetch all inventory data:", error);
+        setError("Erro ao processar as movimentações");
       }
     };
     fetchAllData();
@@ -33,11 +36,13 @@ export default function Inventory() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError(null);
       try {
         const { movements: movementsData } = await getStockMovements(filters);
         setMovements(movementsData);
       } catch (error) {
         console.error("Failed to fetch inventory data:", error);
+        setError("Erro ao processar as movimentações");
       } finally {
         setLoading(false);
       }
@@ -57,6 +62,11 @@ export default function Inventory() {
 
   return (
     <div style={{ marginRight: "30px" }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
       <div
         style={{
           backgroundColor: "white",
@@ -75,7 +85,14 @@ export default function Inventory() {
             borderRadius: "8px 8px 0 0",
           }}
         >
-          <Box mb={3} sx={{ display: "flex", justifyContent: "end", gap: 2 }}>
+          <Box
+            mb={3}
+            sx={{
+              display: "flex",
+              justifyContent: "end",
+              gap: 2,
+            }}
+          >
             <InventoryFilters onChange={setFilters} />
             <Button
               variant="contained"

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogTitle,
@@ -6,12 +7,16 @@ import {
   DialogActions,
   Button,
   TextField,
-  MenuItem,
   CircularProgress,
   Box,
   Alert,
+  Link,
 } from "@mui/material";
-import { addInventoryItem, addMovement } from "../services/inventoryService";
+import {
+  addInventoryItem,
+  addMovement,
+  getInventoryItems,
+} from "../services/inventoryService";
 import Autocomplete from "@mui/material/Autocomplete";
 import { CATEGORY_TRANSLATIONS } from "../constants";
 
@@ -27,6 +32,7 @@ const CATEGORIES = [
 ];
 
 export default function AddProductModal({ open, onClose, onSuccess }) {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
     category: "",
@@ -36,15 +42,41 @@ export default function AddProductModal({ open, onClose, onSuccess }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [existingProduct, setExistingProduct] = useState(null);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    if (field === "name") {
+      setError("");
+      setExistingProduct(null);
+    }
+  };
+
+  const handleEditProduct = () => {
+    if (existingProduct) {
+      onClose();
+      navigate(`/registered-products/${existingProduct.id}`);
+    }
   };
 
   const handleSubmit = async () => {
     setError("");
+    setExistingProduct(null);
     setLoading(true);
+
     try {
+      const products = await getInventoryItems();
+      const foundProduct = products.find(
+        (p) => p.name.toLowerCase().trim() === form.name.toLowerCase().trim()
+      );
+
+      if (foundProduct) {
+        setExistingProduct(foundProduct);
+        setError("Produto já existente.");
+        setLoading(false);
+        return;
+      }
+
       const item = await addInventoryItem({
         name: form.name,
         category: form.category,
@@ -70,6 +102,7 @@ export default function AddProductModal({ open, onClose, onSuccess }) {
         price: "",
         expirationDate: "",
       });
+      setExistingProduct(null);
     } catch (err) {
       setError(err.message || "Erro ao adicionar produto");
       setLoading(false);
@@ -81,7 +114,8 @@ export default function AddProductModal({ open, onClose, onSuccess }) {
     form.category &&
     form.quantity &&
     !isNaN(Number(form.quantity)) &&
-    Number(form.quantity) > 0;
+    Number(form.quantity) > 0 &&
+    Number.isInteger(Number(form.quantity));
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
@@ -134,9 +168,30 @@ export default function AddProductModal({ open, onClose, onSuccess }) {
             label="Quantidade"
             type="number"
             value={form.quantity}
-            onChange={(e) => handleChange("quantity", e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (
+                value === "" ||
+                (Number(value) > 0 && Number.isInteger(Number(value)))
+              ) {
+                handleChange("quantity", value);
+              }
+            }}
+            slotProps={{ input: { min: 1, step: 1 } }}
             required
             fullWidth
+            error={
+              form.quantity &&
+              (Number(form.quantity) <= 0 ||
+                !Number.isInteger(Number(form.quantity)))
+            }
+            helperText={
+              form.quantity &&
+              (Number(form.quantity) <= 0 ||
+                !Number.isInteger(Number(form.quantity)))
+                ? "A quantidade deve ser um número inteiro positivo"
+                : ""
+            }
           />
           <TextField
             label="Preço de Compra"
@@ -153,7 +208,29 @@ export default function AddProductModal({ open, onClose, onSuccess }) {
             InputLabelProps={{ shrink: true }}
             fullWidth
           />
-          {error && <Alert severity="error">{error}</Alert>}
+          {error && (
+            <Alert severity="warning">
+              {error}
+              {existingProduct && (
+                <>
+                  {" "}
+                  <Link
+                    component="button"
+                    variant="body2"
+                    onClick={handleEditProduct}
+                    sx={{
+                      color: "primary.main",
+                      textDecoration: "underline",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Deseja editá-lo?
+                  </Link>
+                </>
+              )}
+            </Alert>
+          )}
         </Box>
       </DialogContent>
       <DialogActions>

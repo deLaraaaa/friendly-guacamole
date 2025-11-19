@@ -11,7 +11,7 @@ import {
   Button,
 } from "@mui/material";
 import { Add, Remove } from "@mui/icons-material";
-import { CATEGORY_TRANSLATIONS } from "../constants";
+import { CATEGORY_TRANSLATIONS, formatProductId } from "../constants";
 import AddMovementModal from "./AddMovementModal";
 import { addMovement } from "../services/inventoryService";
 
@@ -81,7 +81,7 @@ export default function ProductCard({
               sx={{
                 bgcolor: "grey.100",
                 borderRadius: "4px",
-                width: 32,
+                padding: "0px 4px",
                 height: 24,
                 display: "flex",
                 alignItems: "center",
@@ -97,10 +97,16 @@ export default function ProductCard({
             {CATEGORY_TRANSLATIONS[category] || category || "-"}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            ID do produto: {productId}
+            ID do produto: {formatProductId(productId)}
           </Typography>
         </CardContent>
-        <CardActions sx={{ justifyContent: "space-between", px: 1, pb: 1 }}>
+        <CardActions
+          sx={{
+            justifyContent: "space-between",
+            px: 1,
+            pb: 1,
+          }}
+        >
           <IconButton size="small" onClick={() => handleOpenModal("OUT")}>
             <Remove fontSize="small" />
           </IconButton>

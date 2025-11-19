@@ -7,6 +7,8 @@ import {
   TextField,
   Button,
   MenuItem,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import userService from "../services/userService";
 
@@ -16,6 +18,8 @@ export default function AddUserModal({ open, onClose, onSuccess }) {
     email: "",
     role: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -23,13 +27,22 @@ export default function AddUserModal({ open, onClose, onSuccess }) {
   };
 
   const handleSubmit = async () => {
+    setLoading(true);
+    setError("");
     try {
       await userService.createUser(formData);
-      setFormData({ username: "", email: "", role: "" });
+      setFormData({
+        username: "",
+        email: "",
+        role: "",
+      });
+      setLoading(false);
       onSuccess();
       onClose();
     } catch (err) {
       console.error("Error creating user:", err);
+      setError(err.message || "Erro ao criar usuário");
+      setLoading(false);
     }
   };
 
@@ -44,6 +57,7 @@ export default function AddUserModal({ open, onClose, onSuccess }) {
           margin="normal"
           value={formData.username}
           onChange={handleChange}
+          disabled={loading}
         />
         <TextField
           label="Email"
@@ -52,6 +66,7 @@ export default function AddUserModal({ open, onClose, onSuccess }) {
           margin="normal"
           value={formData.email}
           onChange={handleChange}
+          disabled={loading}
         />
         <TextField
           label="Role"
@@ -61,17 +76,32 @@ export default function AddUserModal({ open, onClose, onSuccess }) {
           select
           value={formData.role}
           onChange={handleChange}
+          disabled={loading}
         >
-          <MenuItem value="ADMIN">Admin</MenuItem>
+          <MenuItem value="ADMIN">Administrador</MenuItem>
           <MenuItem value="RECEPCIONIST">Recepcionista</MenuItem>
           <MenuItem value="COOKER">Cozinheiro</MenuItem>
           <MenuItem value="FINANCE">Financeiro</MenuItem>
         </TextField>
+        {error && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {error}
+          </Alert>
+        )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button variant="contained" onClick={handleSubmit}>
-          Criar
+        <Button onClick={onClose} disabled={loading}>
+          Cancelar
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleSubmit}
+          disabled={
+            loading || !formData.username || !formData.email || !formData.role
+          }
+          startIcon={loading && <CircularProgress size={20} />}
+        >
+          {loading ? "Criando..." : "Criar"}
         </Button>
       </DialogActions>
     </Dialog>

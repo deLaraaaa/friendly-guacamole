@@ -6,6 +6,7 @@ import {
   Button,
   Autocomplete,
   TextField,
+  Alert,
 } from "@mui/material";
 import { getInventoryItems } from "../services/inventoryService";
 import ProductCard from "../components/ProductCard";
@@ -15,19 +16,29 @@ export default function RegisteredProducts() {
   const [allItems, setAllItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleOpenModal = () => setModalOpen(true);
   const handleCloseModal = () => setModalOpen(false);
 
   const fetchInventoryItems = () => {
+    setError(null);
     getInventoryItems()
       .then((data) => {
-        setAllItems(data);
-        setFilteredItems(data);
+        // Ordenar produtos por ID
+        const sortedData = [...data].sort((a, b) => {
+          // Converter ID para número se possível, senão comparar como string
+          const idA = Number(a.id) || a.id;
+          const idB = Number(b.id) || b.id;
+          return idA - idB;
+        });
+        setAllItems(sortedData);
+        setFilteredItems(sortedData);
       })
-      .catch((error) =>
-        console.error("Error fetching inventory items:", error)
-      );
+      .catch((error) => {
+        console.error("Error fetching inventory items:", error);
+        setError("Erro ao processar os produtos cadastrados");
+      });
   };
 
   const handleProductAdded = () => {
@@ -60,6 +71,12 @@ export default function RegisteredProducts() {
         Aqui você verá a lista de todos os produtos cadastrados.
       </Typography>
 
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
       <Box
         sx={{
           flex: 1,
@@ -88,7 +105,13 @@ export default function RegisteredProducts() {
               if (newValue) {
                 setFilteredItems([newValue]);
               } else {
-                setFilteredItems(allItems);
+                // Manter ordenação por ID ao limpar o filtro
+                const sortedItems = [...allItems].sort((a, b) => {
+                  const idA = Number(a.id) || a.id;
+                  const idB = Number(b.id) || b.id;
+                  return idA - idB;
+                });
+                setFilteredItems(sortedItems);
               }
             }}
             renderInput={(params) => (

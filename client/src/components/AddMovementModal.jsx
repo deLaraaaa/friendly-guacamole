@@ -58,17 +58,24 @@ export default function AddMovementModal({
       setForm((prev) => ({
         ...prev,
         ...prefilledData,
-        type: getMovementValue(prefilledData.type), // Convert label to value
+        type: getMovementValue(prefilledData.type),
       }));
     }
-  }, [open]); // Remove prefilledData from dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = () => {
-    if (form.product && form.type && form.quantity) {
+    if (
+      form.product &&
+      form.type &&
+      form.quantity &&
+      Number(form.quantity) > 0 &&
+      Number.isInteger(Number(form.quantity))
+    ) {
       const payload = {
         itemId: form.product.id,
         type: form.type,
@@ -116,7 +123,11 @@ export default function AddMovementModal({
           value={form.product}
           onChange={(_, value) => {
             handleChange("product", value);
-            handleChange("category", value ? value.category : "");
+            if (value) {
+              handleChange("category", value.category);
+            } else {
+              handleChange("category", "");
+            }
           }}
           renderInput={(params) => (
             <TextField
@@ -136,12 +147,23 @@ export default function AddMovementModal({
           getOptionLabel={(option) => CATEGORY_TRANSLATIONS[option] || option}
           value={form.product ? form.product.category : form.category || ""}
           onChange={(_, value) => {
-            handleChange("category", value || "");
+            if (!form.product) {
+              handleChange("category", value || "");
+            }
           }}
           renderInput={(params) => (
-            <TextField {...params} label="Categoria" required />
+            <TextField
+              {...params}
+              label="Categoria"
+              required
+              helperText={
+                form.product
+                  ? "A categoria está bloqueada para produtos existentes"
+                  : ""
+              }
+            />
           )}
-          disabled={disableFields.includes("category")}
+          disabled={disableFields.includes("category") || form.product !== null}
         />
 
         <TextField
@@ -163,8 +185,29 @@ export default function AddMovementModal({
           label="Quantidade"
           type="number"
           value={form.quantity}
-          onChange={(e) => handleChange("quantity", e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (
+              value === "" ||
+              (Number(value) > 0 && Number.isInteger(Number(value)))
+            ) {
+              handleChange("quantity", value);
+            }
+          }}
+          slotProps={{ input: { min: 1, step: 1 } }}
           required
+          error={
+            form.quantity &&
+            (Number(form.quantity) <= 0 ||
+              !Number.isInteger(Number(form.quantity)))
+          }
+          helperText={
+            form.quantity &&
+            (Number(form.quantity) <= 0 ||
+              !Number.isInteger(Number(form.quantity)))
+              ? "A quantidade deve ser um número inteiro positivo"
+              : ""
+          }
         />
 
         {form.type === "IN" && (

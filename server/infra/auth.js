@@ -87,7 +87,8 @@ router.use((req, res, next) => {
 
 const routesDir = path.join(__dirname, "../api/routes");
 (async () => {
-  for (const file of fs.readdirSync(routesDir)) {
+  const files = await fs.promises.readdir(routesDir);
+  for (const file of files) {
     if (file.endsWith(".js")) {
       const route = await import(path.join(routesDir, file));
 
