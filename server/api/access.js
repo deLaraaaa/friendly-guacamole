@@ -197,7 +197,10 @@ export default {
       const { password: _, ...userWithoutPassword } = account;
       return { user: userWithoutPassword, token };
     } catch (error) {
-      console.info(`[FTH-RL] (__filename:${new Error().stack.split("\n")[1].trim().split(":").reverse()[1]})`, "error:", error);
+      console.error("Error during login:", error);
+      const err = new Error("Internal server error");
+      err.status = 500;
+      throw err;
     }
   },
 
@@ -293,7 +296,6 @@ export default {
       throw { status: 400, message: "UserId and newRole are required" };
     }
 
-    // Check if trying to change an admin user
     const targetUser = await crud.read(user, CONST.TABLES.ACCOUNT.KIND, { id: userId, restaurantId });
     if (targetUser && targetUser.role === CONST.TABLES.ACCOUNT.ROLE.ADMIN) {
       throw { status: 400, message: "Não é possível alterar o role de um administrador" };
@@ -308,12 +310,9 @@ export default {
   },
 
   async addInventoryItem(user, data) {
-    console.info(`[FTH-RL] (__filename:${new Error().stack.split("\n")[1].trim().split(":").reverse()[1]})`, data);
     const {
       name, category, quantity,
     } = data;
-
-    console.info(`[FTH-RL] (__filename:${new Error().stack.split("\n")[1].trim().split(":").reverse()[1]})`, user);
 
     if (user.role !== CONST.TABLES.ACCOUNT.ROLE.ADMIN) throw { status: 404, ...CONST.ERRORS.ERR_1001 };
 
@@ -527,7 +526,7 @@ export default {
     const password = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await crud.create(user, CONST.TABLES.ACCOUNT.KIND, {
+    await crud.create(user, CONST.TABLES.ACCOUNT.KIND, {
       username,
       email,
       password: hashedPassword,
@@ -611,7 +610,7 @@ export default {
       type,
       quantity,
       entryDate: new Date(),
-      offDate: offDate || new Date().toISOString().split('T')[0]
+      offDate: offDate || new Date().toISOString().split("T")[0]
     };
 
     if (type === CONST.TABLES.MOVEMENT.TYPES.IN) {

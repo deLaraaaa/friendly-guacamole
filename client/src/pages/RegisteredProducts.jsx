@@ -25,9 +25,7 @@ export default function RegisteredProducts() {
     setError(null);
     getInventoryItems()
       .then((data) => {
-        // Ordenar produtos por ID
         const sortedData = [...data].sort((a, b) => {
-          // Converter ID para número se possível, senão comparar como string
           const idA = Number(a.id) || a.id;
           const idB = Number(b.id) || b.id;
           return idA - idB;
