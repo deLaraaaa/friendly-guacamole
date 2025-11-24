@@ -314,7 +314,7 @@ export default function AccountsPage() {
                       }}
                     >
                       <EditIcon fontSize="small" sx={{ mr: 1 }} />
-                      Editar Role
+                      Editar Cargo
                     </MenuItem>
                   )}
                   <MenuItem
@@ -339,7 +339,7 @@ export default function AccountsPage() {
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>Editar Role do Usuário</DialogTitle>
+        <DialogTitle>Editar Cargo do Usuário</DialogTitle>
         <DialogContent>
           <Box
             sx={{
@@ -351,7 +351,7 @@ export default function AccountsPage() {
           >
             <TextField
               select
-              label="Role"
+              label="Cargo"
               value={roleEditNewRole}
               onChange={(e) => setRoleEditNewRole(e.target.value)}
               fullWidth

@@ -149,7 +149,9 @@ function InventoryTable({ movements = [], loading }) {
                 <TableCell component="th" scope="row">
                   {item.itemName}
                 </TableCell>
-                <TableCell>{item.price ? "R$ " + item.price : "-"}</TableCell>
+                <TableCell>
+                  {item.price && item.price !== "-" ? `R$ ${item.price}` : "-"}
+                </TableCell>
                 <TableCell>{item.quantity}</TableCell>
                 <TableCell>
                   {CATEGORY_TRANSLATIONS[item.category] || item.category || "-"}

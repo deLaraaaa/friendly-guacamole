@@ -69,7 +69,7 @@ export default function AddUserModal({ open, onClose, onSuccess }) {
           disabled={loading}
         />
         <TextField
-          label="Role"
+          label="Cargo"
           name="role"
           fullWidth
           margin="normal"
@@ -80,7 +80,7 @@ export default function AddUserModal({ open, onClose, onSuccess }) {
         >
           <MenuItem value="ADMIN">Administrador</MenuItem>
           <MenuItem value="RECEPCIONIST">Recepcionista</MenuItem>
-          <MenuItem value="COOKER">Cozinheiro</MenuItem>
+          <MenuItem value="COOK">Cozinheiro</MenuItem>
           <MenuItem value="FINANCE">Financeiro</MenuItem>
         </TextField>
         {error && (

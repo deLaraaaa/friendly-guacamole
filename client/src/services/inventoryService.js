@@ -186,11 +186,19 @@ export async function getStockMovements(filters = {}) {
         return null;
       }
 
+      let formattedPrice = "-";
+      if (movement.price) {
+        const priceNum = typeof movement.price === "string"
+          ? Number.parseFloat(movement.price.replace(",", "."))
+          : movement.price;
+        formattedPrice = priceNum.toFixed(2).replace(".", ",");
+      }
+
       return {
         id: movement.id,
         itemId: movement.itemId,
         itemName: itemMap[movement.itemId]?.name || "Item not found",
-        price: movement.price || "-",
+        price: formattedPrice,
         quantity: movement.quantity,
         date: new Date(movement.entryDate).toLocaleDateString("pt-BR"),
         category: itemMap[movement.itemId]?.category || "-",
