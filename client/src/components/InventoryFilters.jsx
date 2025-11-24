@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Button, TextField, MenuItem, Menu } from "@mui/material";
 
 const DISPONIBILIDADES = ["Em Estoque", "Estoque Baixo", "Fora de Estoque"];
@@ -14,15 +14,26 @@ const CATEGORIAS = [
   "Frozen",
 ];
 
-export default function InventoryFilters({ onChange }) {
+export default function InventoryFilters({ onChange, initialFilters = {} }) {
   const [filters, setFilters] = useState({
-    disponibilidade: "",
-    status: "",
-    dataInicio: "",
-    dataFim: "",
-    categoria: "",
-    produto: "",
+    disponibilidade: initialFilters.disponibilidade || "",
+    status: initialFilters.status || "",
+    dataInicio: initialFilters.dataInicio || "",
+    dataFim: initialFilters.dataFim || "",
+    categoria: initialFilters.categoria || "",
+    produto: initialFilters.produto || "",
   });
+
+  useEffect(() => {
+    setFilters({
+      disponibilidade: initialFilters.disponibilidade || "",
+      status: initialFilters.status || "",
+      dataInicio: initialFilters.dataInicio || "",
+      dataFim: initialFilters.dataFim || "",
+      categoria: initialFilters.categoria || "",
+      produto: initialFilters.produto || "",
+    });
+  }, [initialFilters]);
   const [anchorEl, setAnchorEl] = useState(null);
 
   const handleFilterClick = (event) => setAnchorEl(event.currentTarget);

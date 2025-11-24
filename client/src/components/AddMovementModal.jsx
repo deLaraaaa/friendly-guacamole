@@ -65,6 +65,13 @@ export default function AddMovementModal({
   }, [open]);
 
   const handleChange = (field, value) => {
+    if (field === "offDate" && form.type === "OUT" && value > today) {
+      return;
+    }
+    if (field === "type" && value === "OUT" && form.offDate > today) {
+      setForm((prev) => ({ ...prev, [field]: value, offDate: today }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -246,8 +253,17 @@ export default function AddMovementModal({
           label={form.type === "IN" ? "Data de Validade" : "Data de Saída"}
           type="date"
           value={form.offDate}
-          onChange={(e) => handleChange("offDate", e.target.value)}
+          onChange={(e) => {
+            const newDate = e.target.value;
+            if (form.type === "OUT" && newDate > today) {
+              return;
+            }
+            handleChange("offDate", newDate);
+          }}
           InputLabelProps={{ shrink: true }}
+          inputProps={{
+            max: form.type === "OUT" ? today : undefined,
+          }}
           required
         />
       </DialogContent>

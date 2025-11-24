@@ -6,8 +6,23 @@ import InventoryFilters from "../components/InventoryFilters";
 import AddMovementModal from "../components/AddMovementModal";
 import { addMovement, getStockMovements } from "../services/inventoryService";
 
+const getOneWeekAgo = () => {
+  const date = new Date();
+  date.setDate(date.getDate() - 7);
+  return date.toISOString().split("T")[0];
+};
+
+const getOneWeekAhead = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  return date.toISOString().split("T")[0];
+};
+
 export default function Inventory() {
-  const [filters, setFilters] = useState({});
+  const [filters, setFilters] = useState({
+    dataInicio: getOneWeekAgo(),
+    dataFim: getOneWeekAhead(),
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [reload, setReload] = useState(false);
   const [movements, setMovements] = useState([]);
@@ -15,23 +30,24 @@ export default function Inventory() {
   const [allItems, setAllItems] = useState([]);
   const [allMovements, setAllMovements] = useState([]);
   const [error, setError] = useState(null);
+  const [metricsLoaded, setMetricsLoaded] = useState(false);
 
   useEffect(() => {
-    // Buscar todos os dados ao montar o componente
-    const fetchAllData = async () => {
-      try {
-        const { movements: allMovementsData, items: allItemsData } =
-          await getStockMovements({});
-        setAllMovements(allMovementsData);
-        setAllItems(allItemsData);
-        setError(null);
-      } catch (error) {
-        console.error("Failed to fetch all inventory data:", error);
-        setError("Erro ao processar as movimentações");
-      }
-    };
-    fetchAllData();
-  }, []);
+    if (!metricsLoaded) {
+      const fetchAllData = async () => {
+        try {
+          const { movements: allMovementsData, items: allItemsData } =
+            await getStockMovements({});
+          setAllMovements(allMovementsData);
+          setAllItems(allItemsData);
+          setMetricsLoaded(true);
+        } catch (error) {
+          console.error("Failed to fetch all inventory data:", error);
+        }
+      };
+      fetchAllData();
+    }
+  }, [metricsLoaded]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,7 +64,24 @@ export default function Inventory() {
       }
     };
     fetchData();
-  }, [filters, reload]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
+  useEffect(() => {
+    if (reload) {
+      const fetchAllData = async () => {
+        try {
+          const { movements: allMovementsData, items: allItemsData } =
+            await getStockMovements({});
+          setAllMovements(allMovementsData);
+          setAllItems(allItemsData);
+        } catch (error) {
+          console.error("Failed to fetch all inventory data:", error);
+        }
+      };
+      fetchAllData();
+    }
+  }, [reload]);
 
   const handleAddMovement = async (data) => {
     try {
@@ -93,7 +126,7 @@ export default function Inventory() {
               gap: 2,
             }}
           >
-            <InventoryFilters onChange={setFilters} />
+            <InventoryFilters onChange={setFilters} initialFilters={filters} />
             <Button
               variant="contained"
               color="primary"
