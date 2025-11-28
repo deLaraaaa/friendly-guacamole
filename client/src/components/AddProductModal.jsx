@@ -80,7 +80,7 @@ export default function AddProductModal({ open, onClose, onSuccess }) {
       const item = await addInventoryItem({
         name: form.name,
         category: form.category,
-        quantity: form.quantity,
+        quantity: 0,
         expirationDate: form.expirationDate || undefined,
       });
 

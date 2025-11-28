@@ -28,7 +28,7 @@ export default function Metrics({ items = [], movements = [], loading }) {
       const exits = movements.filter((m) => m.type === "OUT");
       const totalProducts = items.length;
       const lowStockItems = items.filter(
-        (item) => item.quantity > 0 && item.quantity <= 10
+        (item) => item.quantity > 0 && item.quantity <= 20
       );
       const lowStock = lowStockItems.length;
       let highestExit = {

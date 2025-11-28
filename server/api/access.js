@@ -610,13 +610,14 @@ export default {
       type,
       quantity,
       entryDate: new Date(),
-      offDate: offDate || new Date().toISOString().split("T")[0]
     };
 
     if (type === CONST.TABLES.MOVEMENT.TYPES.IN) {
+      if (offDate) movementData.offDate = offDate;
       if (price) movementData.price = price;
       if (invoiceUrl) movementData.invoiceUrl = invoiceUrl;
     } else if (type === CONST.TABLES.MOVEMENT.TYPES.OUT) {
+      movementData.offDate = offDate || new Date().toISOString().split("T")[0];
       if (destination) movementData.destination = destination;
     }
 

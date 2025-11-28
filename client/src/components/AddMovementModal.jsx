@@ -42,7 +42,7 @@ export default function AddMovementModal({
     type: prefilledData.type || "",
     quantity: "",
     price: "",
-    offDate: today,
+    offDate: prefilledData.type === "OUT" ? today : "",
     destination: "KITCHEN",
     invoiceUrl: "",
   });
@@ -55,21 +55,36 @@ export default function AddMovementModal({
 
   useEffect(() => {
     if (open) {
+      const movementType = getMovementValue(prefilledData.type);
       setForm((prev) => ({
         ...prev,
         ...prefilledData,
-        type: getMovementValue(prefilledData.type),
+        type: movementType,
+        offDate: movementType === "OUT" ? today : prefilledData.offDate || "",
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const handleChange = (field, value) => {
+    if (field === "type" && disableFields.includes("type")) {
+      return;
+    }
     if (field === "offDate" && form.type === "OUT" && value > today) {
       return;
     }
-    if (field === "type" && value === "OUT" && form.offDate > today) {
-      setForm((prev) => ({ ...prev, [field]: value, offDate: today }));
+    if (field === "type") {
+      if (value === "OUT") {
+        setForm((prev) => {
+          const currentDate = prev.offDate || today;
+          const validDate = currentDate > today ? today : currentDate;
+          return { ...prev, [field]: value, offDate: validDate || today };
+        });
+      } else if (value === "IN") {
+        setForm((prev) => ({ ...prev, [field]: value, offDate: "" }));
+      } else {
+        setForm((prev) => ({ ...prev, [field]: value }));
+      }
       return;
     }
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -81,21 +96,25 @@ export default function AddMovementModal({
       form.type &&
       form.quantity &&
       Number(form.quantity) > 0 &&
-      Number.isInteger(Number(form.quantity))
+      Number.isInteger(Number(form.quantity)) &&
+      Number(form.quantity) <= 999999
     ) {
       const payload = {
         itemId: form.product.id,
         type: form.type,
         quantity: parseInt(form.quantity),
-        offDate: form.offDate,
       };
 
       if (form.type === "IN") {
+        if (form.offDate && form.offDate !== "") {
+          payload.offDate = form.offDate;
+        }
         if (form.price) payload.price = parseFloat(form.price);
         if (form.invoiceUrl) payload.invoiceUrl = form.invoiceUrl;
       }
 
       if (form.type === "OUT") {
+        payload.offDate = form.offDate || today;
         payload.destination = form.destination;
       }
 
@@ -196,23 +215,28 @@ export default function AddMovementModal({
             const value = e.target.value;
             if (
               value === "" ||
-              (Number(value) > 0 && Number.isInteger(Number(value)))
+              (Number(value) > 0 &&
+                Number.isInteger(Number(value)) &&
+                Number(value) <= 999999)
             ) {
               handleChange("quantity", value);
             }
           }}
-          slotProps={{ input: { min: 1, step: 1 } }}
+          slotProps={{ input: { min: 1, max: 999999, step: 1 } }}
           required
           error={
             form.quantity &&
             (Number(form.quantity) <= 0 ||
-              !Number.isInteger(Number(form.quantity)))
+              !Number.isInteger(Number(form.quantity)) ||
+              Number(form.quantity) > 999999)
           }
           helperText={
             form.quantity &&
             (Number(form.quantity) <= 0 ||
               !Number.isInteger(Number(form.quantity)))
               ? "A quantidade deve ser um número inteiro positivo"
+              : form.quantity && Number(form.quantity) > 999999
+              ? "A quantidade máxima permitida é 999.999"
               : ""
           }
         />
@@ -224,7 +248,22 @@ export default function AddMovementModal({
               type="number"
               step="0.01"
               value={form.price}
-              onChange={(e) => handleChange("price", e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (
+                  value === "" ||
+                  (Number(value) >= 0 && !Number.isNaN(Number(value)))
+                ) {
+                  handleChange("price", value);
+                }
+              }}
+              slotProps={{ input: { min: 0 } }}
+              error={form.price && Number(form.price) < 0}
+              helperText={
+                form.price && Number(form.price) < 0
+                  ? "O preço não pode ser negativo"
+                  : ""
+              }
             />
             <TextField
               label="URL da Nota Fiscal"
@@ -252,19 +291,19 @@ export default function AddMovementModal({
         <TextField
           label={form.type === "IN" ? "Data de Validade" : "Data de Saída"}
           type="date"
-          value={form.offDate}
+          value={form.offDate || ""}
           onChange={(e) => {
             const newDate = e.target.value;
             if (form.type === "OUT" && newDate > today) {
               return;
             }
-            handleChange("offDate", newDate);
+            handleChange("offDate", newDate || "");
           }}
           InputLabelProps={{ shrink: true }}
           inputProps={{
             max: form.type === "OUT" ? today : undefined,
           }}
-          required
+          required={form.type === "OUT"}
         />
       </DialogContent>
       <DialogActions>

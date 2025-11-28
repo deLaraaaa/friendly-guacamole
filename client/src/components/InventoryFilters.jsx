@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Box, Button, TextField, MenuItem, Menu } from "@mui/material";
+import { CATEGORY_TRANSLATIONS } from "../constants";
 
 const DISPONIBILIDADES = ["Em Estoque", "Estoque Baixo", "Fora de Estoque"];
 const STATUS = ["Entrada", "Saída"];
@@ -143,7 +144,7 @@ export default function InventoryFilters({ onChange, initialFilters = {} }) {
             <MenuItem value="">Todas</MenuItem>
             {CATEGORIAS.map((opt) => (
               <MenuItem key={opt} value={opt}>
-                {opt}
+                {CATEGORY_TRANSLATIONS[opt] || opt}
               </MenuItem>
             ))}
           </TextField>

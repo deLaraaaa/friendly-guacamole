@@ -65,7 +65,7 @@ export default function Inventory() {
     };
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  }, [filters, reload]);
 
   useEffect(() => {
     if (reload) {
@@ -75,12 +75,15 @@ export default function Inventory() {
             await getStockMovements({});
           setAllMovements(allMovementsData);
           setAllItems(allItemsData);
+          const { movements: movementsData } = await getStockMovements(filters);
+          setMovements(movementsData);
         } catch (error) {
           console.error("Failed to fetch all inventory data:", error);
         }
       };
       fetchAllData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reload]);
 
   const handleAddMovement = async (data) => {

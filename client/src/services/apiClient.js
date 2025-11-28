@@ -49,8 +49,25 @@ async function handleErrorResponse(response) {
 async function extractErrorMessage(response) {
   try {
     const errorData = await response.json();
-    return errorData.message || "Erro desconhecido";
+    return errorData.message || errorData.error || errorData.Message || getErrorMessageByStatus(response.status);
   } catch {
-    return "Erro ao processar a resposta do servidor";
+    return getErrorMessageByStatus(response.status);
+  }
+}
+
+function getErrorMessageByStatus(status) {
+  switch (status) {
+    case 400:
+      return "Dados inválidos. Verifique as informações fornecidas.";
+    case 401:
+      return "Não autorizado. Faça login novamente.";
+    case 403:
+      return "Acesso negado.";
+    case 404:
+      return "Recurso não encontrado.";
+    case 500:
+      return "Erro interno do servidor. Tente novamente mais tarde.";
+    default:
+      return "Erro ao processar a resposta do servidor";
   }
 }
