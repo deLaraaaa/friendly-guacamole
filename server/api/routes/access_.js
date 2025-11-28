@@ -65,7 +65,6 @@ const authLimiter = rateLimit({
 router.post("/api/login", async (req, res) => {
   try {
     const result = await api.login(req.body);
-    console.info(`[FTH-RL] (__filename:${new Error().stack.split("\n")[1].trim().split(":").reverse()[1]})`, result);
     req.user = result.user;
     res.status(200).json(result);
   } catch (error) {
@@ -111,10 +110,35 @@ router.post("/api/add_item", authenticate, async (req, res) => {
 router.get("/api/inventory_items", authenticate, async (req, res) => {
   try {
     const filters = req.query;
-    const items = await crud.list(req.user, CONST.TABLES.INVENTORY_ITEMS.KIND, {
-      ...filters,
-      restaurantId: req.user.restaurantId
-    });
+    const { name, ...otherFilters } = filters;
+
+    let items;
+    if (name) {
+      const table = `"${CONST.TABLES.INVENTORY_ITEMS.KIND}"`;
+      const searchPattern = `%${name}%`;
+      const query = `SELECT * FROM ${table} WHERE "restaurantId" = $1 AND "name" ILIKE $2`;
+      const otherFilterKeys = Object.keys(otherFilters).filter(k => k !== "restaurantId");
+
+      if (otherFilterKeys.length > 0) {
+        const whereClauses = [`"restaurantId" = $1`, `"name" ILIKE $2`];
+        const values = [req.user.restaurantId, searchPattern];
+
+        otherFilterKeys.forEach((key, i) => {
+          whereClauses.push(`"${key}" = $${i + 3}`);
+          values.push(otherFilters[key]);
+        });
+
+        const finalQuery = `SELECT * FROM ${table} WHERE ${whereClauses.join(" AND ")}`;
+        items = await crud.rawQuery(req.user, finalQuery, values);
+      } else {
+        items = await crud.rawQuery(req.user, query, [req.user.restaurantId, searchPattern]);
+      }
+    } else {
+      items = await crud.list(req.user, CONST.TABLES.INVENTORY_ITEMS.KIND, {
+        ...filters,
+        restaurantId: req.user.restaurantId
+      });
+    }
     res.status(200).json(items);
   } catch (error) {
     console.error("Error listing inventory items:", error);
@@ -180,7 +204,8 @@ router.post("/api/movement", authenticate, async (req, res) => {
     res.status(201).json(result);
   } catch (error) {
     console.error("Error adding movement:", error);
-    res.status(error.status || 500).json({ error: error.message || "Failed to add movement" });
+    const errorMessage = error.Message || error.message || "Failed to add movement";
+    res.status(error.status || 500).json({ message: errorMessage, error: errorMessage });
   }
 });
 

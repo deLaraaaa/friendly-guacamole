@@ -40,9 +40,10 @@ export default function ProductCard({
 
   const handleSubmit = async (data) => {
     try {
+      const type = data.type || movementType;
       await addMovement({
         itemId: productId,
-        type: movementType,
+        type: type,
         quantity: Number(data.quantity),
         price: data.price,
         offDate: data.offDate || new Date().toISOString().slice(0, 10),
@@ -50,7 +51,7 @@ export default function ProductCard({
         invoiceUrl: data.invoiceUrl,
       });
 
-      if (movementType === "IN") {
+      if (type === "IN") {
         onIncrement(data);
       } else {
         onDecrement(data);
@@ -132,8 +133,8 @@ export default function ProductCard({
         }}
         disableFields={
           movementType === "IN"
-            ? ["product", "category"]
-            : ["product", "category"]
+            ? ["product", "category", "type"]
+            : ["product", "category", "type"]
         }
       />
     </>
