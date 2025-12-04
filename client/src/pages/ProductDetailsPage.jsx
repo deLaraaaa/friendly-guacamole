@@ -89,6 +89,13 @@ export default function ProductDetailsPage() {
       return;
     }
 
+    if (!CATEGORIES.includes(editForm.category)) {
+      setEditError(
+        "Categoria inexistente. Por favor, selecione uma categoria válida."
+      );
+      return;
+    }
+
     setEditLoading(true);
     setEditError("");
     try {
@@ -274,9 +281,14 @@ export default function ProductDetailsPage() {
                     }
                   : null
               }
-              onChange={(_, option) =>
-                setEditForm({ ...editForm, category: option?.value || "" })
-              }
+              onChange={(_, option) => {
+                if (option?.value) {
+                  setEditForm({ ...editForm, category: option.value });
+                  setEditError("");
+                } else {
+                  setEditForm({ ...editForm, category: "" });
+                }
+              }}
               getOptionLabel={(option) =>
                 typeof option === "string" ? option : option.label
               }
@@ -286,7 +298,6 @@ export default function ProductDetailsPage() {
               renderInput={(params) => (
                 <TextField {...params} label="Categoria" required fullWidth />
               )}
-              freeSolo
             />
             {editError && <Alert severity="error">{editError}</Alert>}
           </Box>

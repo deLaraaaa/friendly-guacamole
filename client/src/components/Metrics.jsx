@@ -6,6 +6,14 @@ import {
   Divider,
   CircularProgress,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  List,
+  ListItem,
+  ListItemText,
 } from "@mui/material";
 
 export default function Metrics({ items = [], movements = [], loading }) {
@@ -22,6 +30,7 @@ export default function Metrics({ items = [], movements = [], loading }) {
     lowStock: 0,
     lowStockItems: [],
   });
+  const [lowStockModalOpen, setLowStockModalOpen] = useState(false);
 
   useEffect(() => {
     if (items.length > 0 || movements.length > 0) {
@@ -193,9 +202,9 @@ export default function Metrics({ items = [], movements = [], loading }) {
                   overflow: "auto",
                 }}
               >
-                {metricsData.lowStockItems.map((item, index) => (
+                {metricsData.lowStockItems.slice(0, 3).map((item) => (
                   <Typography
-                    key={index}
+                    key={`${item.name}-${item.quantity}`}
                     variant="caption"
                     display="block"
                     color="text.secondary"
@@ -203,11 +212,58 @@ export default function Metrics({ items = [], movements = [], loading }) {
                     {item.name} ({item.quantity} unid.)
                   </Typography>
                 ))}
+                {metricsData.lowStockItems.length > 3 && (
+                  <Typography
+                    variant="caption"
+                    component="button"
+                    onClick={() => setLowStockModalOpen(true)}
+                    sx={{
+                      color: "#1976d2",
+                      cursor: "pointer",
+                      border: "none",
+                      background: "none",
+                      padding: 0,
+                      marginTop: 0.5,
+                      textDecoration: "underline",
+                      "&:hover": { color: "#1565c0" },
+                    }}
+                  >
+                    + Mostrar mais
+                  </Typography>
+                )}
               </Box>
             )}
           </Box>
         </Grid>
       </Grid>
+
+      <Dialog
+        open={lowStockModalOpen}
+        onClose={() => setLowStockModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Estoques Baixos ({metricsData.lowStockItems.length})
+        </DialogTitle>
+        <DialogContent>
+          <List>
+            {metricsData.lowStockItems.map((item) => (
+              <ListItem key={`${item.name}-${item.quantity}`} divider>
+                <ListItemText
+                  primary={item.name}
+                  secondary={`${item.quantity} unid.`}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLowStockModalOpen(false)} color="primary">
+            Fechar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
