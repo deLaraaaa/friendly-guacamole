@@ -647,13 +647,17 @@ export default {
         params.push(type);
       }
 
-      if (dataInicio) {
-        where.push(`"entryDate" >= $${paramIdx++}`);
-        params.push(dataInicio);
-      }
-      if (dataFim) {
-        where.push(`"entryDate" <= $${paramIdx++}`);
-        params.push(dataFim);
+      if (dataInicio || dataFim) {
+        where.push("(\"type\" != 'IN' OR \"offDate\" IS NOT NULL)");
+
+        if (dataInicio) {
+          where.push(`"offDate" >= $${paramIdx++}`);
+          params.push(dataInicio);
+        }
+        if (dataFim) {
+          where.push(`"offDate" <= $${paramIdx++}`);
+          params.push(dataFim);
+        }
       }
 
       const query = `
