@@ -1,6 +1,27 @@
 import { apiRequest } from "./apiClient";
 
 /**
+ * Formata uma data sem problemas de fuso horário
+ * @param {string|Date} dateString - Data no formato ISO ou Date object
+ * @returns {string} - Data formatada no padrão pt-BR (DD/MM/YYYY)
+ */
+function formatDateWithoutTimezone(dateString) {
+  if (!dateString) return null;
+
+  if (typeof dateString === "string") {
+    const datePart = dateString.split("T")[0];
+    const [year, month, day] = datePart.split("-");
+    return `${day}/${month}/${year}`;
+  }
+
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+/**
  * Fetches stock entries
  * @param {Object} filters - Optional filters to apply
  * @returns {Promise<Array>} - List of stock entries
@@ -200,11 +221,11 @@ export async function getStockMovements(filters = {}) {
         itemName: itemMap[movement.itemId]?.name || "Item not found",
         price: formattedPrice,
         quantity: movement.quantity,
-        date: new Date(movement.entryDate).toLocaleDateString("pt-BR"),
+        date: formatDateWithoutTimezone(movement.entryDate) || new Date(movement.entryDate).toLocaleDateString("pt-BR"),
         category: itemMap[movement.itemId]?.category || "-",
         expirationDate: movement.type === "IN" ?
-          (movement.offDate ? new Date(movement.offDate).toLocaleDateString("pt-BR") : "Não Perecível") :
-          (movement.offDate ? new Date(movement.offDate).toLocaleDateString("pt-BR") : "-"),
+          (movement.offDate ? formatDateWithoutTimezone(movement.offDate) : "Não Perecível") :
+          (movement.offDate ? formatDateWithoutTimezone(movement.offDate) : "-"),
         destination: movement.destination || "-",
         availability,
         type: movement.type,
