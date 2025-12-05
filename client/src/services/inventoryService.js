@@ -168,7 +168,9 @@ export async function getStockMovements(filters = {}) {
     if (filters.categoria) itemFilters.category = filters.categoria;
     if (filters.dataInicio) movementFilters.dataInicio = filters.dataInicio;
     if (filters.dataFim) movementFilters.dataFim = filters.dataFim;
-    if (filters.status) movementFilters.type = filters.status;
+    if (filters.status) {
+      movementFilters.type = filters.status === "Entrada" ? "IN" : filters.status === "Saída" ? "OUT" : filters.status;
+    }
 
     const [movements, inventoryItems] = await Promise.all([
       getMovements(movementFilters),
